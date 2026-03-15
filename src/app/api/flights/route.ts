@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db, Flight } from '@/lib/db';
 import { cookies } from 'next/headers';
-import { v4 as uuidv4 } from 'uuid'; // need uuid
 
 export async function GET() {
   return NextResponse.json(db.flights);
