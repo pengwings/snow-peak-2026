@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { name, activityId, action } = await request.json();
+  const { name, description, activityId, action } = await request.json();
 
   if (action === 'propose') {
     if (!name) return NextResponse.json({ error: 'Name is required' }, { status: 400 });
@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     const newActivity: Activity = {
       id: Math.random().toString(36).substring(7),
       name,
+      description: description ?? '',
       proposer: user,
       votes: [user], // proposer auto-votes
     };

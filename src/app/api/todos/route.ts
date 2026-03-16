@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { action, id, text, completed } = await request.json();
+  const { action, id, text, completed, assignee } = await request.json();
 
   if (action === 'create') {
     if (!text) return NextResponse.json({ error: 'Text required' }, { status: 400 });
@@ -23,7 +23,8 @@ export async function POST(request: Request) {
       id: Math.random().toString(36).substring(7),
       text,
       completed: false,
-      user
+      user,
+      assignee: assignee ?? null,
     };
     await db.addTodo(newTodo);
   } else if (action === 'update') {
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
     if (!todo) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     if (text !== undefined) todo.text = text;
     if (completed !== undefined) todo.completed = completed;
+    if (assignee !== undefined) todo.assignee = assignee;
     await db.updateTodo(todo);
   } else if (action === 'delete') {
     await db.removeTodo(id);

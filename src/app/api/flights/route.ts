@@ -15,9 +15,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { airport, arrivalTime, departureTime } = await request.json();
+  const { departureAirport, arrivalAirport, arrivalTime, departureTime } = await request.json();
 
-  if (!airport || !arrivalTime || !departureTime) {
+  if (!departureAirport || !arrivalAirport || !arrivalTime || !departureTime) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
   }
 
@@ -28,7 +28,8 @@ export async function POST(request: Request) {
   const newFlight: Flight = {
     id: Math.random().toString(36).substring(7),
     user,
-    airport,
+    departureAirport,
+    arrivalAirport,
     arrivalTime,
     departureTime,
   };

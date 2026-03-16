@@ -5,14 +5,14 @@ dotenv.config({ path: '.env.local' });
 const sql = neon(process.env.DATABASE_URL!);
 
 async function init() {
-  console.log("Creating tables...");
-  
+  console.log("Creating/updating tables...");
+
   await sql`
     CREATE TABLE IF NOT EXISTS users (
       name TEXT PRIMARY KEY
     );
   `;
-  
+
   await sql`
     CREATE TABLE IF NOT EXISTS cabins (
       id TEXT PRIMARY KEY,
@@ -21,7 +21,7 @@ async function init() {
       occupants JSONB DEFAULT '[]'
     );
   `;
-  
+
   await sql`
     CREATE TABLE IF NOT EXISTS cars (
       id TEXT PRIMARY KEY,
@@ -31,17 +31,22 @@ async function init() {
       passengers JSONB DEFAULT '[]'
     );
   `;
-  
+
+  // flights — new schema: departure/arrival airports, TIMESTAMPTZ times
   await sql`
     CREATE TABLE IF NOT EXISTS flights (
       id TEXT PRIMARY KEY,
       username TEXT,
-      airport TEXT,
-      arrivalTime TEXT,
-      departureTime TEXT
+      departureAirport TEXT,
+      arrivalAirport TEXT,
+      arrivalTime TIMESTAMPTZ,
+      departureTime TIMESTAMPTZ
     );
   `;
-  
+  // Migrate existing table if created before schema change
+  await sql`ALTER TABLE flights ADD COLUMN IF NOT EXISTS departureAirport TEXT;`;
+  await sql`ALTER TABLE flights ADD COLUMN IF NOT EXISTS arrivalAirport TEXT;`;
+
   await sql`
     CREATE TABLE IF NOT EXISTS supplies (
       id TEXT PRIMARY KEY,
@@ -50,48 +55,39 @@ async function init() {
       amountPaid REAL
     );
   `;
-  
+
   await sql`
     CREATE TABLE IF NOT EXISTS activities (
       id TEXT PRIMARY KEY,
       name TEXT,
+      description TEXT DEFAULT '',
       proposer TEXT,
       votes JSONB DEFAULT '[]'
     );
   `;
+  await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS todos (
       id TEXT PRIMARY KEY,
       text TEXT,
       completed BOOLEAN DEFAULT false,
-      username TEXT
+      username TEXT,
+      assignee TEXT
     );
   `;
+  await sql`ALTER TABLE todos ADD COLUMN IF NOT EXISTS assignee TEXT;`;
 
-  // Seed default data
-  const cabins = await sql`SELECT count(*) FROM cabins`;
-  if (parseInt(cabins[0].count) === 0) {
+  // Seed cabins 9–14 if table is empty
+  const cabinCount = await sql`SELECT count(*) FROM cabins`;
+  if (parseInt(cabinCount[0].count) === 0) {
     console.log("Seeding cabins...");
-    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('1', 'Cabin 1', 4, '[]')`;
-    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('2', 'Cabin 2', 4, '[]')`;
-    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('3', 'Cabin 3', 6, '[]')`;
-  }
-
-  const cars = await sql`SELECT count(*) FROM cars`;
-  if (parseInt(cars[0].count) === 0) {
-    console.log("Seeding cars...");
-    await sql`INSERT INTO cars (id, name, driver, capacity, passengers) VALUES ('1', 'SUV', 'Alice', 5, '[]')`;
-    await sql`INSERT INTO cars (id, name, driver, capacity, passengers) VALUES ('2', 'Sedan', 'Bob', 4, '[]')`;
-  }
-
-  const supplies = await sql`SELECT count(*) FROM supplies`;
-  if (parseInt(supplies[0].count) === 0) {
-    console.log("Seeding supplies...");
-    await sql`INSERT INTO supplies (id, name) VALUES ('1', 'Groceries (Dinner)')`;
-    await sql`INSERT INTO supplies (id, name) VALUES ('2', 'Snacks')`;
-    await sql`INSERT INTO supplies (id, name) VALUES ('3', 'Drinks')`;
-    await sql`INSERT INTO supplies (id, name) VALUES ('4', 'Firewood')`;
+    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('9',  'Cabin 09', 4, '[]')`;
+    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('10', 'Cabin 10', 4, '[]')`;
+    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('11', 'Cabin 11', 4, '[]')`;
+    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('12', 'Cabin 12', 4, '[]')`;
+    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('13', 'Cabin 13', 4, '[]')`;
+    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('14', 'Cabin 14', 4, '[]')`;
   }
 
   console.log("Database initialization complete.");

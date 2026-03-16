@@ -20,9 +20,10 @@ export type Car = {
 export type Flight = {
   id: string;
   user: string;
-  airport: string;
-  arrivalTime: string;
-  departureTime: string;
+  departureAirport: string;
+  arrivalAirport: string;
+  arrivalTime: string;   // ISO UTC string
+  departureTime: string; // ISO UTC string
 };
 
 export type Supply = {
@@ -35,6 +36,7 @@ export type Supply = {
 export type Activity = {
   id: string;
   name: string;
+  description: string;
   proposer: string;
   votes: string[];
 };
@@ -44,6 +46,7 @@ export type Todo = {
   text: string;
   completed: boolean;
   user: string;
+  assignee: string | null;
 };
 
 import { neon } from '@neondatabase/serverless';
@@ -89,14 +92,15 @@ export const db = {
     return rows.map((r: any) => ({
       id: r.id,
       user: r.username,
-      airport: r.airport,
-      arrivalTime: r.arrivaltime,
-      departureTime: r.departuretime
+      departureAirport: r.departureairport,
+      arrivalAirport: r.arrivalairport,
+      arrivalTime: r.arrivaltime instanceof Date ? r.arrivaltime.toISOString() : r.arrivaltime,
+      departureTime: r.departuretime instanceof Date ? r.departuretime.toISOString() : r.departuretime,
     }));
   },
   async addFlight(flight: Flight) {
-    await sql`INSERT INTO flights (id, username, airport, arrivaltime, departuretime) 
-              VALUES (${flight.id}, ${flight.user}, ${flight.airport}, ${flight.arrivalTime}, ${flight.departureTime})`;
+    await sql`INSERT INTO flights (id, username, departureairport, arrivalairport, arrivaltime, departuretime)
+              VALUES (${flight.id}, ${flight.user}, ${flight.departureAirport}, ${flight.arrivalAirport}, ${flight.arrivalTime}::timestamptz, ${flight.departureTime}::timestamptz)`;
   },
   async removeFlightForUser(user: string) {
     await sql`DELETE FROM flights WHERE username = ${user}`;
@@ -125,8 +129,8 @@ export const db = {
     }));
   },
   async addActivity(activity: Activity) {
-    await sql`INSERT INTO activities (id, name, proposer, votes) 
-              VALUES (${activity.id}, ${activity.name}, ${activity.proposer}, ${JSON.stringify(activity.votes)}::jsonb)`;
+    await sql`INSERT INTO activities (id, name, description, proposer, votes)
+              VALUES (${activity.id}, ${activity.name}, ${activity.description}, ${activity.proposer}, ${JSON.stringify(activity.votes)}::jsonb)`;
   },
   async updateActivity(activity: Activity) {
     await sql`UPDATE activities 
@@ -140,16 +144,17 @@ export const db = {
       id: r.id,
       text: r.text,
       completed: r.completed,
-      user: r.username
+      user: r.username,
+      assignee: r.assignee ?? null,
     }));
   },
   async addTodo(todo: Todo) {
-    await sql`INSERT INTO todos (id, text, completed, username) 
-              VALUES (${todo.id}, ${todo.text}, ${todo.completed}, ${todo.user})`;
+    await sql`INSERT INTO todos (id, text, completed, username, assignee)
+              VALUES (${todo.id}, ${todo.text}, ${todo.completed}, ${todo.user}, ${todo.assignee})`;
   },
   async updateTodo(todo: Todo) {
     await sql`UPDATE todos 
-              SET text = ${todo.text}, completed = ${todo.completed} 
+              SET text = ${todo.text}, completed = ${todo.completed}, assignee = ${todo.assignee}
               WHERE id = ${todo.id}`;
   },
   async removeTodo(todoId: string) {
