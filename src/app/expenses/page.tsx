@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Expense } from '@/lib/db';
 import { useRouter } from 'next/navigation';
+import { displayName } from '@/lib/displayName';
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -56,7 +57,11 @@ export default function ExpensesPage() {
     fetchExpenses();
   };
 
-  const handleDelete = async (expenseId: string) => {
+  const handleDelete = async (expenseId: string, expenseName: string) => {
+    if (!confirm(`Are you sure you want to delete "${expenseName}"?`)) {
+      return;
+    }
+
     await fetch('/api/expenses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -119,7 +124,7 @@ export default function ExpensesPage() {
               >
                 <option value="">Select buyer...</option>
                 {users.map((u) => (
-                  <option key={u} value={u}>{u}</option>
+                  <option key={u} value={u}>{displayName(u)}</option>
                 ))}
               </select>
             </div>
@@ -222,7 +227,7 @@ export default function ExpensesPage() {
                         >
                           <option value="">Select buyer...</option>
                           {users.map((u) => (
-                            <option key={u} value={u}>{u}</option>
+                            <option key={u} value={u}>{displayName(u)}</option>
                           ))}
                         </select>
                         <button
@@ -239,7 +244,7 @@ export default function ExpensesPage() {
                         onClick={() => setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], buyer: expense.buyer || '' } })}
                         className="cursor-pointer hover:underline"
                       >
-                        {expense.buyer || <span className="italic" style={{ color: 'var(--muted)' }}>Click to add</span>}
+                        {expense.buyer ? displayName(expense.buyer) : <span className="italic" style={{ color: 'var(--muted)' }}>Click to add</span>}
                       </span>
                     )}
                   </td>
@@ -283,7 +288,7 @@ export default function ExpensesPage() {
                   </td>
                   <td className="px-6 py-4 text-sm text-right">
                     <button
-                      onClick={() => handleDelete(expense.id)}
+                      onClick={() => handleDelete(expense.id, expense.name)}
                       className="text-xs uppercase tracking-wide"
                       style={{ color: '#a33' }}
                     >
