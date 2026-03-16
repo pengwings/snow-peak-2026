@@ -5,17 +5,27 @@ import { useRouter } from 'next/navigation';
 
 export default function Login() {
   const [name, setName] = useState('');
+  const [error, setError] = useState('');
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    await fetch('/api/login', {
+    setError('');
+
+    const response = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
     });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setError(data.error || 'Login failed');
+      return;
+    }
 
     router.push('/');
     router.refresh();
@@ -49,6 +59,11 @@ export default function Login() {
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
+          {error && (
+            <div className="text-sm text-center" style={{ color: '#a33' }}>
+              {error}
+            </div>
+          )}
           <button
             type="submit"
             className="w-full py-2.5 text-sm tracking-widest uppercase transition-colors"

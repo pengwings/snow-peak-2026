@@ -42,23 +42,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, expenses: await db.getExpenses() });
   }
 
-  if (action === 'claim') {
-    if (expense.buyer && expense.buyer !== user) {
-      return NextResponse.json({ error: 'Already claimed' }, { status: 400 });
-    }
-    expense.buyer = user;
+  if (action === 'update') {
+    if (name !== undefined) expense.name = name.trim();
+    if (buyer !== undefined) expense.buyer = buyer || null;
+    if (amountPaid !== undefined) expense.amountPaid = amountPaid ? parseFloat(amountPaid) : null;
     await db.updateExpense(expense);
-  } else if (action === 'unclaim') {
-    if (expense.buyer === user) {
-      expense.buyer = null;
-      expense.amountPaid = null;
-      await db.updateExpense(expense);
-    }
-  } else if (action === 'pay') {
-    if (expense.buyer === user) {
-      expense.amountPaid = parseFloat(amountPaid) || 0;
-      await db.updateExpense(expense);
-    }
   }
 
   return NextResponse.json({ success: true, expenses: await db.getExpenses() });

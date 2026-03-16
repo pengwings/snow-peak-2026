@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation';
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [user, setUser] = useState<string | null>(null);
-  const [payingAmount, setPayingAmount] = useState<Record<string, string>>({});
+  const [users, setUsers] = useState<string[]>([]);
+  const [editingExpense, setEditingExpense] = useState<Record<string, { name?: string; buyer?: string; amountPaid?: string }>>({});
   const [newExpenseName, setNewExpenseName] = useState('');
   const [newExpenseBuyer, setNewExpenseBuyer] = useState('');
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
@@ -25,6 +26,7 @@ export default function ExpensesPage() {
         }
       });
     fetchExpenses();
+    fetchUsers();
   }, [router]);
 
   const fetchExpenses = async () => {
@@ -33,11 +35,32 @@ export default function ExpensesPage() {
     setExpenses(data);
   };
 
-  const handleAction = async (expenseId: string, action: string, amountPaid?: string) => {
+  const fetchUsers = async () => {
+    const res = await fetch('/api/users');
+    const data = await res.json();
+    setUsers(data.map((u: { name: string }) => u.name));
+  };
+
+  const handleUpdate = async (expenseId: string, field: 'name' | 'buyer' | 'amountPaid') => {
+    const value = editingExpense[expenseId]?.[field];
     await fetch('/api/expenses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ expenseId, action, amountPaid }),
+      body: JSON.stringify({
+        expenseId,
+        action: 'update',
+        [field]: value
+      }),
+    });
+    setEditingExpense({ ...editingExpense, [expenseId]: { ...editingExpense[expenseId], [field]: undefined } });
+    fetchExpenses();
+  };
+
+  const handleDelete = async (expenseId: string) => {
+    await fetch('/api/expenses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expenseId, action: 'delete' }),
     });
     fetchExpenses();
   };
@@ -89,13 +112,16 @@ export default function ExpensesPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Buyer</label>
-              <input
-                type="text"
+              <select
                 className="w-full border-gray-300 rounded-md shadow-sm border px-3 py-2 text-gray-900"
-                placeholder="e.g. John"
                 value={newExpenseBuyer}
                 onChange={(e) => setNewExpenseBuyer(e.target.value)}
-              />
+              >
+                <option value="">Select buyer...</option>
+                {users.map((u) => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
@@ -139,33 +165,31 @@ export default function ExpensesPage() {
           </thead>
           <tbody>
             {expenses.map((expense, i) => {
-              const isClaimedByMe = expense.buyer === user;
-              const isClaimedByOther = expense.buyer && expense.buyer !== user;
+              const isEditingName = editingExpense[expense.id]?.name !== undefined;
+              const isEditingBuyer = editingExpense[expense.id]?.buyer !== undefined;
+              const isEditingAmount = editingExpense[expense.id]?.amountPaid !== undefined;
+
               return (
                 <tr key={expense.id} style={{ borderBottom: i < expenses.length - 1 ? '1px solid var(--border)' : 'none', background: 'var(--card)' }}>
-                  <td className="px-6 py-4 text-sm font-medium" style={{ color: 'var(--foreground)' }}>{expense.name}</td>
-                  <td className="px-6 py-4 text-sm" style={{ color: 'var(--muted)' }}>
-                    {expense.buyer ? (
-                      <span className="px-2 py-0.5 text-xs rounded" style={{ background: isClaimedByMe ? '#d4edda' : 'var(--background)', color: isClaimedByMe ? '#2d6a4f' : 'var(--muted)', border: '1px solid var(--border)' }}>
-                        {expense.buyer} {isClaimedByMe && '(You)'}
-                      </span>
-                    ) : (
-                      <span className="italic" style={{ color: 'var(--muted)' }}>Unclaimed</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-sm" style={{ color: 'var(--muted)' }}>
-                    {isClaimedByMe ? (
+                  <td className="px-6 py-4 text-sm font-medium" style={{ color: 'var(--foreground)' }}>
+                    {isEditingName ? (
                       <div className="flex items-center gap-2">
-                        <span style={{ color: 'var(--muted)' }}>$</span>
                         <input
-                          type="number" step="0.01" min="0"
-                          className="w-24 px-2 py-1 text-sm focus:outline-none"
+                          type="text"
+                          className="flex-1 px-2 py-1 text-sm focus:outline-none"
                           style={{ border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
-                          value={payingAmount[expense.id] ?? (expense.amountPaid || '')}
-                          onChange={(e) => setPayingAmount({ ...payingAmount, [expense.id]: e.target.value })}
+                          value={editingExpense[expense.id]?.name ?? ''}
+                          onChange={(e) => setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], name: e.target.value } })}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleUpdate(expense.id, 'name');
+                            if (e.key === 'Escape') setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], name: undefined } });
+                          }}
+                          onBlur={() => setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], name: undefined } })}
+                          autoFocus
                         />
                         <button
-                          onClick={() => handleAction(expense.id, 'pay', payingAmount[expense.id])}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleUpdate(expense.id, 'name')}
                           className="text-xs px-2 py-1"
                           style={{ background: 'var(--accent)', color: '#f5f0e8' }}
                         >
@@ -173,32 +197,98 @@ export default function ExpensesPage() {
                         </button>
                       </div>
                     ) : (
-                      <span>{expense.amountPaid ? `$${expense.amountPaid.toFixed(2)}` : '—'}</span>
+                      <span
+                        onClick={() => setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], name: expense.name } })}
+                        className="cursor-pointer hover:underline"
+                      >
+                        {expense.name}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-sm" style={{ color: 'var(--muted)' }}>
+                    {isEditingBuyer ? (
+                      <div className="flex items-center gap-2">
+                        <select
+                          className="px-2 py-1 text-sm focus:outline-none"
+                          style={{ border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
+                          value={editingExpense[expense.id]?.buyer ?? ''}
+                          onChange={(e) => setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], buyer: e.target.value } })}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleUpdate(expense.id, 'buyer');
+                            if (e.key === 'Escape') setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], buyer: undefined } });
+                          }}
+                          onBlur={() => setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], buyer: undefined } })}
+                          autoFocus
+                        >
+                          <option value="">Select buyer...</option>
+                          {users.map((u) => (
+                            <option key={u} value={u}>{u}</option>
+                          ))}
+                        </select>
+                        <button
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleUpdate(expense.id, 'buyer')}
+                          className="text-xs px-2 py-1"
+                          style={{ background: 'var(--accent)', color: '#f5f0e8' }}
+                        >
+                          Save
+                        </button>
+                      </div>
+                    ) : (
+                      <span
+                        onClick={() => setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], buyer: expense.buyer || '' } })}
+                        className="cursor-pointer hover:underline"
+                      >
+                        {expense.buyer || <span className="italic" style={{ color: 'var(--muted)' }}>Click to add</span>}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-sm" style={{ color: 'var(--muted)' }}>
+                    {isEditingAmount ? (
+                      <div className="flex items-center gap-2">
+                        <span style={{ color: 'var(--muted)' }}>$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className="w-24 px-2 py-1 text-sm focus:outline-none"
+                          style={{ border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
+                          value={editingExpense[expense.id]?.amountPaid ?? ''}
+                          onChange={(e) => setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], amountPaid: e.target.value } })}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleUpdate(expense.id, 'amountPaid');
+                            if (e.key === 'Escape') setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], amountPaid: undefined } });
+                          }}
+                          onBlur={() => setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], amountPaid: undefined } })}
+                          placeholder="0.00"
+                          autoFocus
+                        />
+                        <button
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleUpdate(expense.id, 'amountPaid')}
+                          className="text-xs px-2 py-1"
+                          style={{ background: 'var(--accent)', color: '#f5f0e8' }}
+                        >
+                          Save
+                        </button>
+                      </div>
+                    ) : (
+                      <span
+                        onClick={() => setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], amountPaid: expense.amountPaid?.toString() || '' } })}
+                        className="cursor-pointer hover:underline"
+                      >
+                        {expense.amountPaid ? `$${expense.amountPaid.toFixed(2)}` : <span className="italic" style={{ color: 'var(--muted)' }}>Click to add</span>}
+                      </span>
                     )}
                   </td>
                   <td className="px-6 py-4 text-sm text-right">
-                    <div className="flex gap-3 justify-end">
-                      {!expense.buyer && (
-                        <button onClick={() => handleAction(expense.id, 'claim')} className="text-xs uppercase tracking-wide" style={{ color: 'var(--accent)' }}>
-                          Claim
-                        </button>
-                      )}
-                      {isClaimedByMe && (
-                        <button onClick={() => handleAction(expense.id, 'unclaim')} className="text-xs uppercase tracking-wide" style={{ color: '#a33' }}>
-                          Unclaim
-                        </button>
-                      )}
-                      {isClaimedByOther && (
-                        <span className="text-xs italic" style={{ color: 'var(--muted)' }}>Claimed</span>
-                      )}
-                      <button
-                        onClick={() => handleAction(expense.id, 'delete')}
-                        className="text-xs uppercase tracking-wide ml-2"
-                        style={{ color: '#a33' }}
-                      >
-                        Delete
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => handleDelete(expense.id)}
+                      className="text-xs uppercase tracking-wide"
+                      style={{ color: '#a33' }}
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               );

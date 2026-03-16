@@ -10,8 +10,13 @@ export async function POST(request: Request) {
 
   const trimmedName = name.trim();
 
-  // Add user to db
-  await db.addUser(trimmedName);
+  // Check if user exists in the database
+  const users = await db.getUsers();
+  const userExists = users.some(u => u.name === trimmedName);
+
+  if (!userExists) {
+    return NextResponse.json({ error: 'User not found. Please contact an administrator.' }, { status: 403 });
+  }
 
   const response = NextResponse.json({ success: true, name: trimmedName });
   response.cookies.set('user', trimmedName, {
