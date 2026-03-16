@@ -5,6 +5,31 @@ import { Flight } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 import { displayName } from '@/lib/displayName';
 
+function formatDateTime(dateTimeStr: string): string {
+  if (!dateTimeStr) return '—';
+
+  // Handle both "YYYY-MM-DDTHH:mm" and "YYYY-MM-DD HH:mm" formats
+  const normalized = dateTimeStr.replace(' ', 'T');
+  const parts = normalized.split('T');
+
+  if (parts.length < 2) return dateTimeStr; // Return as-is if format is unexpected
+
+  const [datePart, timePart] = parts;
+  const [year, month, day] = datePart.split('-');
+  const timeComponents = timePart.split(':');
+
+  if (timeComponents.length < 2) return dateTimeStr;
+
+  const [hours24, minutes] = timeComponents;
+
+  let hours = parseInt(hours24, 10);
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12; // Convert 0 to 12
+
+  return `${month}/${day}/${year} ${hours}:${minutes} ${ampm}`;
+}
+
 export default function FlightsPage() {
   const [flights, setFlights] = useState<Flight[]>([]);
   const [user, setUser] = useState<string | null>(null);
@@ -39,7 +64,29 @@ export default function FlightsPage() {
     setFlights(data);
   };
 
+  const userArrivingFlight = flights.find(f => f.user === user && f.flightType === 'arriving');
+  const userDepartingFlight = flights.find(f => f.user === user && f.flightType === 'departing');
 
+  // Populate form when flight type changes
+  useEffect(() => {
+    const existingFlight = flightType === 'arriving' ? userArrivingFlight : userDepartingFlight;
+
+    if (existingFlight) {
+      setDepartureAirport(existingFlight.departureAirport);
+      setArrivalAirport(existingFlight.arrivalAirport);
+      // Convert ISO string to datetime-local format (YYYY-MM-DDTHH:mm)
+      setArrivalTime(existingFlight.arrivalTime.substring(0, 16));
+      setDepartureTime(existingFlight.departureTime.substring(0, 16));
+      setFlightNumber(existingFlight.flightNumber || '');
+    } else {
+      // Clear form if no existing flight
+      setDepartureAirport('');
+      setArrivalAirport('');
+      setArrivalTime('');
+      setDepartureTime('');
+      setFlightNumber('');
+    }
+  }, [flightType, userArrivingFlight, userDepartingFlight]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,9 +114,6 @@ export default function FlightsPage() {
   };
 
   if (!user) return <div className="p-8">Loading...</div>;
-
-  const userArrivingFlight = flights.find(f => f.user === user && f.flightType === 'arriving');
-  const userDepartingFlight = flights.find(f => f.user === user && f.flightType === 'departing');
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-12">
@@ -226,14 +270,10 @@ export default function FlightsPage() {
                             {flight.departureAirport}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-gray-500">
-                            {new Date(flight.departureTime).toLocaleString([], {
-                              month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                            })}
+                            {formatDateTime(flight.departureTime)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-gray-500">
-                            {new Date(flight.arrivalTime).toLocaleString([], {
-                              month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                            })}
+                            {formatDateTime(flight.arrivalTime)}
                           </td>
                         </tr>
                       ))}
@@ -294,14 +334,10 @@ export default function FlightsPage() {
                                     {flight.arrivalAirport}
                                   </td>
                                   <td className="px-4 py-3 whitespace-nowrap text-gray-500">
-                                    {new Date(flight.departureTime).toLocaleString([], {
-                                      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                                    })}
+                                    {formatDateTime(flight.departureTime)}
                                   </td>
                                   <td className="px-4 py-3 whitespace-nowrap text-gray-500">
-                                    {new Date(flight.arrivalTime).toLocaleString([], {
-                                      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                                    })}
+                                    {formatDateTime(flight.arrivalTime)}
                                   </td>
                                 </tr>
                               ))}
