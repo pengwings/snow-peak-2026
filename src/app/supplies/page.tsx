@@ -21,7 +21,6 @@ export default function SuppliesPage() {
           setUser(data.user);
         }
       });
-
     fetchSupplies();
   }, [router]);
 
@@ -40,94 +39,84 @@ export default function SuppliesPage() {
     fetchSupplies();
   };
 
-  const handleAmountChange = (supplyId: string, value: string) => {
-    setPayingAmount({ ...payingAmount, [supplyId]: value });
-  };
-
-  if (!user) return <div className="p-8">Loading...</div>;
+  if (!user) return <div className="p-8" style={{ color: 'var(--muted)' }}>Loading…</div>;
 
   const totalSpent = supplies.reduce((acc, curr) => acc + (curr.amountPaid || 0), 0);
 
   return (
-    <div className="max-w-4xl mx-auto p-8">
-      <h1 className="text-3xl font-bold mb-8">Supplies & Cost Splitting</h1>
+    <div className="max-w-4xl mx-auto px-6 py-12">
+      <h1 className="text-4xl font-normal mb-2" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Supplies</h1>
+      <div className="w-8 h-px mb-8" style={{ background: 'var(--border)' }} />
 
-      <div className="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
-        <h2 className="text-lg font-semibold text-blue-900 mb-2">Cost Summary</h2>
-        <p className="text-blue-800 text-2xl font-bold">${totalSpent.toFixed(2)} Total Spent</p>
+      {/* Summary */}
+      <div className="mb-8 px-6 py-4 flex justify-between items-center" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+        <span className="text-sm tracking-wide uppercase" style={{ color: 'var(--muted)' }}>Total Spent</span>
+        <span className="text-2xl font-medium" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>${totalSpent.toFixed(2)}</span>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Buyer</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount Paid</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+      {/* Table */}
+      <div style={{ border: '1px solid var(--border)' }}>
+        <table className="min-w-full" style={{ borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--card)' }}>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Item</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Buyer</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Amount</th>
+              <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {supplies.map((supply) => {
+          <tbody>
+            {supplies.map((supply, i) => {
               const isClaimedByMe = supply.buyer === user;
               const isClaimedByOther = supply.buyer && supply.buyer !== user;
-
               return (
-                <tr key={supply.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {supply.name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <tr key={supply.id} style={{ borderBottom: i < supplies.length - 1 ? '1px solid var(--border)' : 'none', background: 'var(--card)' }}>
+                  <td className="px-6 py-4 text-sm font-medium" style={{ color: 'var(--foreground)' }}>{supply.name}</td>
+                  <td className="px-6 py-4 text-sm" style={{ color: 'var(--muted)' }}>
                     {supply.buyer ? (
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isClaimedByMe ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                      <span className="px-2 py-0.5 text-xs rounded" style={{ background: isClaimedByMe ? '#d4edda' : 'var(--background)', color: isClaimedByMe ? '#2d6a4f' : 'var(--muted)', border: '1px solid var(--border)' }}>
                         {supply.buyer} {isClaimedByMe && '(You)'}
                       </span>
                     ) : (
-                      <span className="text-gray-400 italic">Unclaimed</span>
+                      <span className="italic" style={{ color: 'var(--muted)' }}>Unclaimed</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 text-sm" style={{ color: 'var(--muted)' }}>
                     {isClaimedByMe ? (
-                      <div className="flex items-center space-x-2">
-                        <span className="text-gray-500">$</span>
+                      <div className="flex items-center gap-2">
+                        <span style={{ color: 'var(--muted)' }}>$</span>
                         <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          className="w-24 border-gray-300 rounded-md shadow-sm border px-2 py-1 text-sm"
+                          type="number" step="0.01" min="0"
+                          className="w-24 px-2 py-1 text-sm focus:outline-none"
+                          style={{ border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
                           value={payingAmount[supply.id] ?? (supply.amountPaid || '')}
-                          onChange={(e) => handleAmountChange(supply.id, e.target.value)}
+                          onChange={(e) => setPayingAmount({ ...payingAmount, [supply.id]: e.target.value })}
                         />
                         <button
                           onClick={() => handleAction(supply.id, 'pay', payingAmount[supply.id])}
-                          className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                          className="text-xs px-2 py-1"
+                          style={{ background: 'var(--accent)', color: '#f5f0e8' }}
                         >
                           Save
                         </button>
                       </div>
                     ) : (
-                      <span>{supply.amountPaid ? `$${supply.amountPaid.toFixed(2)}` : '-'}</span>
+                      <span>{supply.amountPaid ? `$${supply.amountPaid.toFixed(2)}` : '—'}</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td className="px-6 py-4 text-sm text-right">
                     {!supply.buyer && (
-                      <button
-                        onClick={() => handleAction(supply.id, 'claim')}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
+                      <button onClick={() => handleAction(supply.id, 'claim')} className="text-xs uppercase tracking-wide" style={{ color: 'var(--accent)' }}>
                         Claim
                       </button>
                     )}
                     {isClaimedByMe && (
-                      <button
-                        onClick={() => handleAction(supply.id, 'unclaim')}
-                        className="text-red-600 hover:text-red-900"
-                      >
+                      <button onClick={() => handleAction(supply.id, 'unclaim')} className="text-xs uppercase tracking-wide" style={{ color: '#a33' }}>
                         Unclaim
                       </button>
                     )}
                     {isClaimedByOther && (
-                      <span className="text-gray-400">Claimed</span>
+                      <span className="text-xs italic" style={{ color: 'var(--muted)' }}>Claimed</span>
                     )}
                   </td>
                 </tr>

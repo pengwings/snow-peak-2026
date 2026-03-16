@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Home, HomeIcon as Cabin, Car, Plane, ShoppingCart, Activity, CheckSquare } from 'lucide-react';
+import { displayName } from '@/lib/displayName';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -37,14 +38,21 @@ export default function Navbar() {
   ];
 
   return (
-    <nav className="bg-blue-800 text-white shadow-md">
+    <nav style={{ borderBottom: '1px solid var(--border)', background: 'var(--card)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center mr-8">
-              <span className="font-bold text-xl tracking-tight">Snow Peak</span>
-            </div>
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-4">
+        <div className="flex justify-between h-14 items-center">
+
+          {/* Brand */}
+          <div className="flex items-center gap-8">
+            <span
+              className="font-semibold tracking-[0.15em] uppercase text-xs"
+              style={{ color: 'var(--accent)', fontFamily: 'Inter, sans-serif' }}
+            >
+              Snow Peak 2026
+            </span>
+
+            {/* Desktop links */}
+            <div className="hidden sm:flex sm:gap-1">
               {navLinks.map((link) => {
                 const Icon = link.icon;
                 const isActive = pathname === link.href;
@@ -52,39 +60,49 @@ export default function Navbar() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md mt-3 mb-3 ${
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium tracking-wide uppercase rounded transition-colors ${
                       isActive
-                        ? 'bg-blue-900 text-white'
-                        : 'text-blue-100 hover:bg-blue-700 hover:text-white'
+                        ? 'bg-[#e8e0d0] text-[#1a1a1a]'
+                        : 'text-[#5a5248] hover:bg-[#ede7dc] hover:text-[#1a1a1a]'
                     }`}
                   >
-                    <Icon className="w-4 h-4 mr-2" />
+                    <Icon className="w-3.5 h-3.5" />
                     {link.label}
                   </Link>
                 );
               })}
             </div>
           </div>
-          
-          <div className="flex items-center">
-            {user ? (
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-medium text-blue-100">Hi, {user}</span>
-                <button
-                  onClick={handleLogout}
-                  className="text-sm text-blue-200 hover:text-white px-3 py-2 rounded-md hover:bg-blue-700 transition"
-                >
-                  Logout
-                </button>
-              </div>
-            ) : null}
-          </div>
+
+          {/* User / logout */}
+          {user && (
+            <div className="flex items-center gap-3">
+              <span className="text-xs" style={{ color: 'var(--muted)' }}>
+                {displayName(user)}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="text-xs tracking-wide uppercase px-3 py-1.5 rounded transition-colors"
+                style={{ color: 'var(--muted)', border: '1px solid var(--border)' }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = 'var(--border)';
+                  (e.currentTarget as HTMLElement).style.color = 'var(--foreground)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = 'transparent';
+                  (e.currentTarget as HTMLElement).style.color = 'var(--muted)';
+                }}
+              >
+                Sign out
+              </button>
+            </div>
+          )}
         </div>
       </div>
-      
-      {/* Mobile nav (simple scrollable) */}
-      <div className="sm:hidden overflow-x-auto bg-blue-900 pb-1">
-        <div className="flex space-x-1 px-2 pt-2 pb-2">
+
+      {/* Mobile scrollable nav */}
+      <div className="sm:hidden overflow-x-auto" style={{ borderTop: '1px solid var(--border)', background: 'var(--card)' }}>
+        <div className="flex gap-1 px-2 py-2">
           {navLinks.map((link) => {
             const Icon = link.icon;
             const isActive = pathname === link.href;
@@ -92,13 +110,13 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`whitespace-nowrap flex items-center px-3 py-2 rounded-md text-sm font-medium ${
+                className={`whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium tracking-wide uppercase transition-colors ${
                   isActive
-                    ? 'bg-blue-800 text-white'
-                    : 'text-blue-200 hover:bg-blue-700 hover:text-white'
+                    ? 'bg-[#e0d8c8] text-[#1a1a1a]'
+                    : 'text-[#6a6258] hover:bg-[#ede7dc]'
                 }`}
               >
-                <Icon className="w-4 h-4 mr-1.5" />
+                <Icon className="w-3.5 h-3.5" />
                 {link.label}
               </Link>
             );

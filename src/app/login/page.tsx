@@ -18,47 +18,54 @@ export default function Login() {
     });
 
     router.push('/');
-    router.refresh(); // Refresh layout to show current user
+    router.refresh();
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-md">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Welcome to Snow Peak Trip
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Please enter your name to continue
-          </p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="name" className="sr-only">
-                Name
-              </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Enter your name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-          </div>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--background)' }}>
+      <div className="w-full max-w-sm px-8 py-12 text-center" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+        <p className="text-xs tracking-[0.2em] uppercase mb-6" style={{ color: 'var(--muted)' }}>
+          Snow Peak 2026
+        </p>
+        <h1 className="text-3xl font-normal mb-1" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>
+          Welcome
+        </h1>
+        <div className="w-8 h-px mx-auto my-4" style={{ background: 'var(--border)' }} />
+        <p className="text-sm mb-8" style={{ color: 'var(--muted)' }}>Enter your name to continue</p>
 
-          <div>
-            <button
-              type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Enter
-            </button>
-          </div>
+        <form onSubmit={handleLogin} className="space-y-4">
+          <input
+            id="name"
+            name="name"
+            type="text"
+            required
+            className="w-full px-4 py-2.5 text-sm text-center focus:outline-none"
+            style={{
+              background: 'var(--background)',
+              border: '1px solid var(--border)',
+              color: 'var(--foreground)',
+            }}
+            placeholder="Your name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <button
+            type="submit"
+            className="w-full py-2.5 text-sm tracking-widest uppercase transition-colors"
+            style={{
+              background: 'var(--accent)',
+              color: '#f5f0e8',
+              border: '1px solid var(--accent)',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.background = '#2e2820';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.background = 'var(--accent)';
+            }}
+          >
+            Enter
+          </button>
         </form>
       </div>
     </div>

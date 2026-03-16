@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Cabin } from '@/lib/db';
 import { useRouter } from 'next/navigation';
+import { displayName } from '@/lib/displayName';
 
 export default function CabinsPage() {
   const [cabins, setCabins] = useState<Cabin[]>([]);
@@ -41,9 +42,10 @@ export default function CabinsPage() {
   if (!user) return <div className="p-8">Loading...</div>;
 
   return (
-    <div className="max-w-6xl mx-auto p-4 sm:p-8">
-      <h1 className="text-3xl font-bold mb-4">Snow Peak Cabin Map</h1>
-      <p className="text-gray-600 mb-8">Click on a cabin on the map to join it. Current occupants are listed below the map.</p>
+    <div className="max-w-6xl mx-auto px-4 sm:px-8 py-10">
+      <h1 className="text-4xl font-normal mb-1" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Snow Peak Cabin Map</h1>
+      <div className="w-8 h-px mb-4" style={{ background: 'var(--border)' }} />
+      <p className="text-sm mb-8" style={{ color: 'var(--muted)' }}>Click on a cabin to join it. Occupants are listed below.</p>
 
       {/* Interactive Map Visual */}
       <div className="bg-[#f2ece3] rounded-xl p-0 mb-12 shadow-inner relative overflow-hidden h-[600px] w-full max-w-[500px] mx-auto border-2 border-stone-300">
@@ -144,7 +146,7 @@ export default function CabinsPage() {
         </div>
       </div>
 
-      <h2 className="text-2xl font-bold mb-6 border-b pb-2">Occupant Details</h2>
+      <h2 className="text-2xl font-normal mb-6" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Occupant Details</h2>
       
       <div className="grid gap-6 md:grid-cols-3">
         {cabins.map((cabin) => {
@@ -152,9 +154,9 @@ export default function CabinsPage() {
           const isFull = cabin.occupants.length >= cabin.capacity;
 
           return (
-            <div key={cabin.id} className={`border p-6 rounded-lg shadow-sm ${
-              isOccupant ? 'bg-blue-50 border-blue-200' : 'bg-white'
-            }`}>
+            <div key={cabin.id} className={`p-6 ${
+              isOccupant ? 'bg-[#edf7f0]' : ''
+            }`} style={{ border: '1px solid var(--border)', background: isOccupant ? '#edf7f0' : 'var(--card)' }}>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">{cabin.name}</h2>
                 <span className="text-sm bg-gray-100 px-2 py-1 rounded-md text-gray-600">
@@ -172,7 +174,7 @@ export default function CabinsPage() {
                         <span className={`w-2.5 h-2.5 rounded-full mr-3 ${
                           occ === user ? 'bg-blue-500' : 'bg-green-500'
                         }`}></span>
-                        {occ} {occ === user && <span className="ml-1 text-blue-600 text-sm">(You)</span>}
+                        {displayName(occ)} {occ === user && <span className="ml-1 text-blue-600 text-sm">(You)</span>}
                       </li>
                     ))}
                   </ul>
@@ -183,7 +185,8 @@ export default function CabinsPage() {
                 {isOccupant ? (
                   <button
                     onClick={() => handleAssign(null)}
-                    className="w-full py-2 bg-red-100 text-red-600 font-semibold rounded-md hover:bg-red-200 transition"
+                    className="w-full py-2 text-sm transition"
+                    style={{ background: '#fde8e8', color: '#a33', border: '1px solid #f0c0c0' }}
                   >
                     Leave Cabin
                   </button>
@@ -191,11 +194,11 @@ export default function CabinsPage() {
                   <button
                     onClick={() => handleAssign(cabin.id)}
                     disabled={isFull}
-                    className={`w-full py-2 rounded-md font-semibold transition ${
-                      isFull
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}
+                    className="w-full py-2 text-sm transition"
+                    style={isFull
+                      ? { background: 'var(--background)', color: 'var(--muted)', border: '1px solid var(--border)', cursor: 'not-allowed' }
+                      : { background: 'var(--accent)', color: '#f5f0e8', border: '1px solid var(--accent)' }
+                    }
                   >
                     {isFull ? 'Cabin is Full' : 'Join Cabin'}
                   </button>

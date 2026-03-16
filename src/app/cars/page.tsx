@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Car } from '@/lib/db';
 import { useRouter } from 'next/navigation';
+import { displayName } from '@/lib/displayName';
 
 export default function CarsPage() {
   const [cars, setCars] = useState<Car[]>([]);
@@ -19,7 +20,6 @@ export default function CarsPage() {
           setUser(data.user);
         }
       });
-
     fetchCars();
   }, [router]);
 
@@ -38,51 +38,52 @@ export default function CarsPage() {
     fetchCars();
   };
 
-  if (!user) return <div className="p-8">Loading...</div>;
+  if (!user) return <div className="p-8" style={{ color: 'var(--muted)' }}>Loading…</div>;
 
   const isUserDriver = cars.some((car) => car.driver === user);
 
   return (
-    <div className="max-w-4xl mx-auto p-8">
-      <h1 className="text-3xl font-bold mb-8">Rental Cars</h1>
-      
+    <div className="max-w-4xl mx-auto px-6 py-12">
+      <h1 className="text-4xl font-normal mb-2" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Rental Cars</h1>
+      <div className="w-8 h-px mb-8" style={{ background: 'var(--border)' }} />
+
       {isUserDriver && (
-        <div className="mb-6 p-4 bg-yellow-50 text-yellow-800 rounded-md">
-          You are designated as a driver and cannot join other cars as a passenger.
+        <div className="mb-6 px-4 py-3 text-sm" style={{ background: '#fdf3d8', border: '1px solid #e8d89a', color: '#7a5c10' }}>
+          You are a designated driver and cannot join other cars as a passenger.
         </div>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-px md:grid-cols-2" style={{ background: 'var(--border)' }}>
         {cars.map((car) => {
-          const isPassenger = car.passengers.includes(user);
-          const totalOccupants = car.passengers.length + 1; // +1 for driver
+          const isPassenger = car.passengers.includes(user!);
+          const totalOccupants = car.passengers.length + 1;
           const isFull = totalOccupants >= car.capacity;
 
           return (
-            <div key={car.id} className="border p-6 rounded-lg shadow-sm bg-white">
-              <h2 className="text-xl font-semibold mb-1">{car.name}</h2>
-              <p className="text-sm text-gray-500 mb-4">
-                Occupants: {totalOccupants} / {car.capacity}
+            <div key={car.id} className="p-6" style={{ background: 'var(--card)' }}>
+              <h2 className="text-xl font-normal mb-1" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>{car.name}</h2>
+              <p className="text-xs uppercase tracking-wide mb-5" style={{ color: 'var(--muted)' }}>
+                {totalOccupants} / {car.capacity} seats
               </p>
-              
+
               <div className="mb-4">
-                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-2">Driver</h3>
-                <div className="flex items-center text-gray-900 bg-gray-50 px-3 py-2 rounded-md">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                  {car.driver} {car.driver === user && '(You)'}
+                <h3 className="text-xs font-medium uppercase tracking-wider mb-2" style={{ color: 'var(--muted)' }}>Driver</h3>
+                <div className="flex items-center gap-2 text-sm px-3 py-2" style={{ background: 'var(--background)', border: '1px solid var(--border)' }}>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--accent)' }} />
+                  {displayName(car.driver)} {car.driver === user && '(You)'}
                 </div>
               </div>
 
-              <div className="mb-4 min-h-[100px]">
-                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-2">Passengers</h3>
+              <div className="mb-5">
+                <h3 className="text-xs font-medium uppercase tracking-wider mb-2" style={{ color: 'var(--muted)' }}>Passengers</h3>
                 {car.passengers.length === 0 ? (
-                  <p className="text-sm text-gray-500 italic">No passengers yet</p>
+                  <p className="text-sm italic" style={{ color: 'var(--muted)' }}>No passengers yet</p>
                 ) : (
                   <ul className="space-y-1">
                     {car.passengers.map((pass, i) => (
-                      <li key={i} className="flex items-center text-gray-700">
-                        <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                        {pass} {pass === user && '(You)'}
+                      <li key={i} className="flex items-center gap-2 text-sm">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-600" />
+                        {displayName(pass)} {pass === user && '(You)'}
                       </li>
                     ))}
                   </ul>
@@ -93,7 +94,8 @@ export default function CarsPage() {
                 isPassenger ? (
                   <button
                     onClick={() => handleAssign(null)}
-                    className="w-full py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition"
+                    className="w-full py-2 text-sm text-red-700 transition"
+                    style={{ background: '#fde8e8', border: '1px solid #f0c0c0' }}
                   >
                     Leave Car
                   </button>
@@ -101,11 +103,11 @@ export default function CarsPage() {
                   <button
                     onClick={() => handleAssign(car.id)}
                     disabled={isFull}
-                    className={`w-full py-2 rounded-md transition ${
-                      isFull
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}
+                    className="w-full py-2 text-sm transition"
+                    style={isFull
+                      ? { background: 'var(--background)', color: 'var(--muted)', border: '1px solid var(--border)', cursor: 'not-allowed' }
+                      : { background: 'var(--accent)', color: '#f5f0e8', border: '1px solid var(--accent)' }
+                    }
                   >
                     {isFull ? 'Full' : 'Join as Passenger'}
                   </button>

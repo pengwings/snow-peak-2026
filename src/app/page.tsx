@@ -3,6 +3,16 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { displayName } from '@/lib/displayName';
+
+const sections = [
+  { href: '/cabins', emoji: '🏠', label: 'Cabins', desc: 'View cabin assignments and choose where you\'ll be sleeping.' },
+  { href: '/cars', emoji: '🚗', label: 'Rental Cars', desc: 'Check who is driving, who is riding, and claim your seat.' },
+  { href: '/flights', emoji: '✈️', label: 'Flights', desc: 'Log arrival and departure times to coordinate pickups.' },
+  { href: '/supplies', emoji: '🛒', label: 'Supplies', desc: 'See what we need, claim items to buy, and enter costs to split.' },
+  { href: '/activities', emoji: '🏔️', label: 'Activities', desc: 'Propose ideas and vote on what we should do.' },
+  { href: '/todos', emoji: '✅', label: 'Todos', desc: 'Create and manage a shared trip checklist.' },
+];
 
 export default function Home() {
   const [user, setUser] = useState<string | null>(null);
@@ -20,92 +30,49 @@ export default function Home() {
       });
   }, [router]);
 
-  if (!user) return <div className="min-h-screen p-8 flex justify-center">Loading...</div>;
+  if (!user) return <div className="min-h-screen p-8 flex justify-center" style={{ color: 'var(--muted)' }}>Loading…</div>;
 
   return (
-    <div className="max-w-5xl mx-auto p-8">
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl shadow-xl overflow-hidden mb-12">
-        <div className="px-8 py-12 text-center text-white">
-          <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">
-            Snow Peak Trip
-          </h1>
-          <p className="text-lg md:text-xl text-blue-100 max-w-2xl mx-auto">
-            Welcome back, <span className="font-semibold text-white">{user}</span>! Let's get everything organized for the perfect getaway.
-          </p>
-        </div>
+    <div className="max-w-5xl mx-auto px-6 py-14">
+      {/* Hero */}
+      <div className="mb-14 text-center">
+        <p className="text-xs tracking-[0.2em] uppercase mb-3" style={{ color: 'var(--muted)' }}>
+          September 10, 2026 - September 13, 2026
+        </p>
+        <h1 className="text-5xl md:text-6xl font-normal mb-4" style={{ fontFamily: 'EB Garamond, Georgia, serif', color: 'var(--foreground)' }}>
+          Snow Peak Campground Trip
+        </h1>
+        <div className="w-12 h-px mx-auto mb-4" style={{ background: 'var(--border)' }} />
+        <p style={{ color: 'var(--muted)' }} className="text-sm">
+          Welcome, <span style={{ color: 'var(--foreground)' }} className="font-medium">{displayName(user)}</span>.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Link href="/cabins" className="block group">
-          <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm group-hover:shadow-md transition duration-200 h-full flex flex-col">
-            <h2 className="text-xl font-bold text-gray-900 mb-2 flex items-center">
-              🏠 Cabins
-            </h2>
-            <p className="text-gray-600 flex-1">View cabin assignments and choose where you'll be sleeping.</p>
-            <span className="text-blue-600 font-medium text-sm mt-4 flex items-center group-hover:translate-x-1 transition-transform">
-              Manage Cabins &rarr;
-            </span>
-          </div>
-        </Link>
-
-        <Link href="/cars" className="block group">
-          <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm group-hover:shadow-md transition duration-200 h-full flex flex-col">
-            <h2 className="text-xl font-bold text-gray-900 mb-2 flex items-center">
-              🚗 Rental Cars
-            </h2>
-            <p className="text-gray-600 flex-1">Check who is driving, who is riding, and claim your seat.</p>
-            <span className="text-blue-600 font-medium text-sm mt-4 flex items-center group-hover:translate-x-1 transition-transform">
-              View Rides &rarr;
-            </span>
-          </div>
-        </Link>
-
-        <Link href="/flights" className="block group">
-          <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm group-hover:shadow-md transition duration-200 h-full flex flex-col">
-            <h2 className="text-xl font-bold text-gray-900 mb-2 flex items-center">
-              ✈️ Flights
-            </h2>
-            <p className="text-gray-600 flex-1">Log your arrival and departure times so we can coordinate airport pickups.</p>
-            <span className="text-blue-600 font-medium text-sm mt-4 flex items-center group-hover:translate-x-1 transition-transform">
-              Add Flight Info &rarr;
-            </span>
-          </div>
-        </Link>
-
-        <Link href="/supplies" className="block group">
-          <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm group-hover:shadow-md transition duration-200 h-full flex flex-col">
-            <h2 className="text-xl font-bold text-gray-900 mb-2 flex items-center">
-              🛒 Supplies
-            </h2>
-            <p className="text-gray-600 flex-1">See what we need, claim items to buy, and enter costs to split later.</p>
-            <span className="text-blue-600 font-medium text-sm mt-4 flex items-center group-hover:translate-x-1 transition-transform">
-              Shop Supplies &rarr;
-            </span>
-          </div>
-        </Link>
-
-        <Link href="/activities" className="block group">
-          <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm group-hover:shadow-md transition duration-200 h-full flex flex-col">
-            <h2 className="text-xl font-bold text-gray-900 mb-2 flex items-center">
-              🏔️ Activities
-            </h2>
-            <p className="text-gray-600 flex-1">Propose ideas for what we should do and vote on others' suggestions.</p>
-            <span className="text-blue-600 font-medium text-sm mt-4 flex items-center group-hover:translate-x-1 transition-transform">
-              Vote on Activities &rarr;
-            </span>
-          </div>
-        </Link>
-        <Link href="/todos" className="block group">
-          <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm group-hover:shadow-md transition duration-200 h-full flex flex-col">
-            <h2 className="text-xl font-bold text-gray-900 mb-2 flex items-center">
-              ✅ Todos
-            </h2>
-            <p className="text-gray-600 flex-1">Create and manage a shared trip checklist.</p>
-            <span className="text-blue-600 font-medium text-sm mt-4 flex items-center group-hover:translate-x-1 transition-transform">
-              View Todos &rarr;
-            </span>
-          </div>
-        </Link>
+      {/* Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px" style={{ background: 'var(--border)' }}>
+        {sections.map(({ href, emoji, label, desc }) => (
+          <Link key={href} href={href} className="block group">
+            <div
+              className="h-full p-8 transition-colors"
+              style={{ background: 'var(--card)' }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.background = '#ede7dc';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.background = 'var(--card)';
+              }}
+            >
+              <div className="text-2xl mb-4">{emoji}</div>
+              <h2 className="text-lg font-medium mb-2" style={{ color: 'var(--foreground)', fontFamily: 'EB Garamond, Georgia, serif' }}>
+                {label}
+              </h2>
+              <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--muted)' }}>{desc}</p>
+              <span className="text-xs tracking-widest uppercase" style={{ color: 'var(--accent)' }}>
+                View →
+              </span>
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   );
