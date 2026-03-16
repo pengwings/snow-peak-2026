@@ -37,7 +37,7 @@ export default function Navbar() {
   ];
 
   return (
-    <nav style={{ borderBottom: '1px solid var(--border)', background: 'var(--card)' }}>
+    <nav className="sticky top-0 z-50" style={{ borderBottom: '1px solid var(--border)', background: 'var(--card)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-14 items-center">
 
