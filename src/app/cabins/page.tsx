@@ -45,11 +45,9 @@ export default function CabinsPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-8 py-10">
       <h1 className="text-4xl font-normal mb-1" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Snow Peak Cabin Map</h1>
       <div className="w-8 h-px mb-4" style={{ background: 'var(--border)' }} />
-      <p className="text-sm mb-8" style={{ color: 'var(--muted)' }}>Click on a cabin to join it. Occupants are listed below.</p>
-
       {/* Interactive Map Visual */}
       <div className="bg-[#f2ece3] rounded-xl p-0 mb-12 shadow-inner relative overflow-hidden h-[600px] w-full max-w-[500px] mx-auto border-2 border-stone-300">
-        
+
         {/* Drawn Path Background */}
         <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 500 600">
           {/* Straight road down the center, ending 25% above the bottom */}
@@ -90,20 +88,20 @@ export default function CabinsPage() {
           {cabins.map((cabin) => {
             const isOccupant = cabin.occupants.includes(user);
             const isFull = cabin.occupants.length >= cabin.capacity;
-            
+
             // Extract cabin number to match with layout
             const match = cabin.name.match(/\d+/);
             // Use parseInt to normalize '09' -> 9 so the key matches
             const cabinNum = match ? String(parseInt(match[0], 10)) : null;
-            
+
             // Road is straight down x=50%. Left cabins ~25%, right cabins ~72%.
             const mapLayout: Record<string, { top: string; left: string; available: boolean }> = {
-              '9':  { top: '22%', left: '25%', available: true  },  // left, upper
+              '9': { top: '22%', left: '25%', available: true },  // left, upper
               '10': { top: '28%', left: '72%', available: false },  // right, upper — not ours
-              '11': { top: '43%', left: '25%', available: true  },  // left, middle
-              '12': { top: '53%', left: '72%', available: true  },  // right, middle
-              '13': { top: '62%', left: '25%', available: true  },  // left, lower
-              '14': { top: '78%', left: '72%', available: true  },  // right, past road end
+              '11': { top: '43%', left: '25%', available: true },  // left, middle
+              '12': { top: '53%', left: '72%', available: true },  // right, middle
+              '13': { top: '62%', left: '25%', available: true },  // left, lower
+              '14': { top: '78%', left: '72%', available: true },  // right, past road end
             };
 
             const layout = cabinNum && mapLayout[cabinNum];
@@ -115,7 +113,7 @@ export default function CabinsPage() {
             const selectable = layout.available;
 
             return (
-              <div 
+              <div
                 key={cabin.id}
                 className={`absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center group
                   ${selectable ? 'cursor-pointer hover:scale-105 transition-transform' : 'opacity-60 cursor-not-allowed'}
@@ -132,13 +130,13 @@ export default function CabinsPage() {
                 <div className={`w-14 h-14 relative flex items-center justify-center rounded-md rotate-[-2deg] shadow-sm
                   ${isOccupant ? 'bg-[#5c8a40] text-white border-2 border-green-700' :
                     isFull ? 'bg-[#a3534a] text-white' :
-                    selectable ? 'bg-[#aeb35b] text-[#f2ece3]' : 'bg-[#c5c1b6] text-gray-500'
+                      selectable ? 'bg-[#aeb35b] text-[#f2ece3]' : 'bg-[#c5c1b6] text-gray-500'
                   }
                 `}>
                   <div className="font-bold text-xl drop-shadow-sm leading-none pt-1">
                     {cabinNum && cabinNum.padStart(2, '0')}
                   </div>
-                  
+
                   {/* Status Indicator */}
                   {isOccupant && (
                     <div className="absolute -top-2 -right-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-sm flex items-center justify-center">
@@ -161,8 +159,8 @@ export default function CabinsPage() {
                     </div>
                     <div className="text-[10px] font-bold text-center mt-0.5 uppercase tracking-wider">
                       {isOccupant ? <span className="text-blue-600">Click to leave</span> :
-                       isFull ? <span className="text-red-500">Full</span> :
-                       <span className="text-green-600">Click to join</span>}
+                        isFull ? <span className="text-red-500">Full</span> :
+                          <span className="text-green-600">Click to join</span>}
                     </div>
                   </div>
                 )}
@@ -173,23 +171,22 @@ export default function CabinsPage() {
       </div>
 
       <h2 className="text-2xl font-normal mb-6" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Occupant Details</h2>
-      
+
       <div className="grid gap-6 md:grid-cols-3">
         {cabins.map((cabin) => {
           const isOccupant = cabin.occupants.includes(user);
           const isFull = cabin.occupants.length >= cabin.capacity;
 
           return (
-            <div key={cabin.id} className={`p-6 ${
-              isOccupant ? 'bg-[#edf7f0]' : ''
-            }`} style={{ border: '1px solid var(--border)', background: isOccupant ? '#edf7f0' : 'var(--card)' }}>
+            <div key={cabin.id} className={`p-6 ${isOccupant ? 'bg-[#edf7f0]' : ''
+              }`} style={{ border: '1px solid var(--border)', background: isOccupant ? '#edf7f0' : 'var(--card)' }}>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">{cabin.name}</h2>
                 <span className="text-sm bg-gray-100 px-2 py-1 rounded-md text-gray-600">
                   {cabin.occupants.length} / {cabin.capacity}
                 </span>
               </div>
-              
+
               <div className="min-h-[120px]">
                 {cabin.occupants.length === 0 ? (
                   <p className="text-gray-500 italic text-sm">Empty cabin</p>
@@ -197,9 +194,8 @@ export default function CabinsPage() {
                   <ul className="space-y-2">
                     {cabin.occupants.map((occ, i) => (
                       <li key={i} className="flex items-center text-gray-800 font-medium">
-                        <span className={`w-2.5 h-2.5 rounded-full mr-3 ${
-                          occ === user ? 'bg-blue-500' : 'bg-green-500'
-                        }`}></span>
+                        <span className={`w-2.5 h-2.5 rounded-full mr-3 ${occ === user ? 'bg-blue-500' : 'bg-green-500'
+                          }`}></span>
                         {displayName(occ)} {occ === user && <span className="ml-1 text-blue-600 text-sm">(You)</span>}
                       </li>
                     ))}

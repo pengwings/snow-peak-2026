@@ -57,9 +57,9 @@ export const db = {
   },
 
   async getCabins(): Promise<Cabin[]> {
-    const rows = await sql`SELECT * FROM cabins`;
-    return rows.map((r: any) => ({ 
-      ...r, 
+    const rows = await sql`SELECT * FROM cabins ORDER BY id::integer`;
+    return rows.map((r: any) => ({
+      ...r,
       occupants: typeof r.occupants === 'string' ? JSON.parse(r.occupants) : (r.occupants || [])
     }));
   },
