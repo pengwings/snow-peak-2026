@@ -34,13 +34,15 @@ async function init() {
       arrivalAirport TEXT,
       arrivalTime TIMESTAMPTZ,
       departureTime TIMESTAMPTZ,
-      flightNumber TEXT
+      flightNumber TEXT,
+      flightType TEXT DEFAULT 'arriving'
     );
   `;
   // Migrate existing table if created before schema change
   await sql`ALTER TABLE flights ADD COLUMN IF NOT EXISTS departureAirport TEXT;`;
   await sql`ALTER TABLE flights ADD COLUMN IF NOT EXISTS arrivalAirport TEXT;`;
   await sql`ALTER TABLE flights ADD COLUMN IF NOT EXISTS flightNumber TEXT;`;
+  await sql`ALTER TABLE flights ADD COLUMN IF NOT EXISTS flightType TEXT DEFAULT 'arriving';`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS supplies (

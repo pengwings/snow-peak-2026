@@ -15,14 +15,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { departureAirport, arrivalAirport, arrivalTime, departureTime, flightNumber } = await request.json();
+  const { departureAirport, arrivalAirport, arrivalTime, departureTime, flightNumber, flightType } = await request.json();
 
-  if (!departureAirport || !arrivalAirport || !arrivalTime || !departureTime) {
+  if (!departureAirport || !arrivalAirport || !arrivalTime || !departureTime || !flightType) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
   }
 
-  // Remove existing flight for user if any
-  await db.removeFlightForUser(user);
+  // Remove existing flight of this type for user if any
+  await db.removeFlightByType(user, flightType);
 
   // Add new flight
   const newFlight: Flight = {
@@ -33,6 +33,7 @@ export async function POST(request: Request) {
     arrivalTime,
     departureTime,
     flightNumber,
+    flightType,
   };
 
   await db.addFlight(newFlight);
