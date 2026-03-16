@@ -13,6 +13,7 @@ export default function FlightsPage() {
   const [arrivalAirport, setArrivalAirport] = useState('');
   const [arrivalTime, setArrivalTime] = useState('');
   const [departureTime, setDepartureTime] = useState('');
+  const [flightNumber, setFlightNumber] = useState('');
 
 
   const router = useRouter();
@@ -49,6 +50,7 @@ export default function FlightsPage() {
         arrivalAirport,
         arrivalTime,
         departureTime,
+        flightNumber,
       }),
     });
 
@@ -56,6 +58,7 @@ export default function FlightsPage() {
     setArrivalAirport('');
     setArrivalTime('');
     setDepartureTime('');
+    setFlightNumber('');
 
     fetchFlights();
   };
@@ -125,6 +128,16 @@ export default function FlightsPage() {
                 onChange={(e) => setArrivalTime(e.target.value)}
               />
             </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Flight Number (Optional)</label>
+              <input
+                type="text"
+                className="w-full border-gray-300 rounded-md shadow-sm border px-3 py-2 text-gray-900"
+                placeholder="e.g. AA1234"
+                value={flightNumber}
+                onChange={(e) => setFlightNumber(e.target.value.toUpperCase())}
+              />
+            </div>
 
           </div>
           <button
@@ -153,6 +166,7 @@ export default function FlightsPage() {
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border)' }}>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Passenger</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Flight #</th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>From</th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Departs</th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Arrives</th>
@@ -165,6 +179,9 @@ export default function FlightsPage() {
                         <tr key={flight.id} className={flight.user === user ? 'bg-blue-50' : ''}>
                           <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900">
                             {displayName(flight.user)} {flight.user === user && '(You)'}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-600 font-mono">
+                            {flight.flightNumber || '—'}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-gray-600 font-mono">
                             {flight.departureAirport}

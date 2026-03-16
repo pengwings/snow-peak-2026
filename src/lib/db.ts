@@ -17,6 +17,7 @@ export type Flight = {
   arrivalAirport: string;
   arrivalTime: string;   // ISO UTC string
   departureTime: string; // ISO UTC string
+  flightNumber?: string;
 };
 
 export type Supply = {
@@ -76,11 +77,12 @@ export const db = {
       arrivalAirport: r.arrivalairport,
       arrivalTime: r.arrivaltime instanceof Date ? r.arrivaltime.toISOString() : r.arrivaltime,
       departureTime: r.departuretime instanceof Date ? r.departuretime.toISOString() : r.departuretime,
+      flightNumber: r.flightnumber,
     }));
   },
   async addFlight(flight: Flight) {
-    await sql`INSERT INTO flights (id, username, departureairport, arrivalairport, arrivaltime, departuretime)
-              VALUES (${flight.id}, ${flight.user}, ${flight.departureAirport}, ${flight.arrivalAirport}, ${flight.arrivalTime}::timestamptz, ${flight.departureTime}::timestamptz)`;
+    await sql`INSERT INTO flights (id, username, departureairport, arrivalairport, arrivaltime, departuretime, flightnumber)
+              VALUES (${flight.id}, ${flight.user}, ${flight.departureAirport}, ${flight.arrivalAirport}, ${flight.arrivalTime}::timestamptz, ${flight.departureTime}::timestamptz, ${flight.flightNumber || null})`;
   },
   async removeFlightForUser(user: string) {
     await sql`DELETE FROM flights WHERE username = ${user}`;

@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { departureAirport, arrivalAirport, arrivalTime, departureTime } = await request.json();
+  const { departureAirport, arrivalAirport, arrivalTime, departureTime, flightNumber } = await request.json();
 
   if (!departureAirport || !arrivalAirport || !arrivalTime || !departureTime) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
@@ -32,6 +32,7 @@ export async function POST(request: Request) {
     arrivalAirport,
     arrivalTime,
     departureTime,
+    flightNumber,
   };
 
   await db.addFlight(newFlight);
