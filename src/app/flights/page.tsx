@@ -13,9 +13,7 @@ export default function FlightsPage() {
   const [arrivalAirport, setArrivalAirport] = useState('');
   const [arrivalTime, setArrivalTime] = useState('');
   const [departureTime, setDepartureTime] = useState('');
-  const [timezone, setTimezone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone
-  );
+
 
   const router = useRouter();
 
@@ -39,28 +37,7 @@ export default function FlightsPage() {
     setFlights(data);
   };
 
-  // Convert a datetime-local string + explicit IANA timezone to a UTC ISO string
-  const toUTC = (localDatetimeStr: string, tz: string) => {
-    if (!localDatetimeStr) return '';
-    // Parse the naive datetime string as if it's in the given timezone
-    const [datePart, timePart] = localDatetimeStr.split('T');
-    const [year, month, day] = datePart.split('-').map(Number);
-    const [hour, minute] = timePart.split(':').map(Number);
-    // Use Temporal-style trick: format a known UTC time in the target tz, then find the offset
-    const approxDate = new Date(Date.UTC(year, month - 1, day, hour, minute));
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz,
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', hour12: false,
-    });
-    const parts = formatter.formatToParts(approxDate);
-    const get = (t: string) => parseInt(parts.find(p => p.type === t)!.value);
-    const tzYear = get('year'), tzMonth = get('month'), tzDay = get('day');
-    const tzHour = get('hour') % 24, tzMinute = get('minute');
-    const tzDate = new Date(Date.UTC(tzYear, tzMonth - 1, tzDay, tzHour, tzMinute));
-    const offsetMs = tzDate.getTime() - approxDate.getTime();
-    return new Date(approxDate.getTime() - offsetMs).toISOString();
-  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,8 +47,8 @@ export default function FlightsPage() {
       body: JSON.stringify({
         departureAirport,
         arrivalAirport,
-        arrivalTime: toUTC(arrivalTime, timezone),
-        departureTime: toUTC(departureTime, timezone),
+        arrivalTime,
+        departureTime,
       }),
     });
 
@@ -79,7 +56,7 @@ export default function FlightsPage() {
     setArrivalAirport('');
     setArrivalTime('');
     setDepartureTime('');
-    setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+
     fetchFlights();
   };
 
@@ -148,31 +125,7 @@ export default function FlightsPage() {
                 onChange={(e) => setArrivalTime(e.target.value)}
               />
             </div>
-            <div className="md:col-span-2">
-              <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--muted)' }}>Time Zone</label>
-              <select
-                value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                className="w-full border-gray-300 rounded-md shadow-sm border px-3 py-2 text-gray-900"
-                style={{ background: 'var(--background)' }}
-              >
-                <optgroup label="United States">
-                  <option value="America/New_York">Eastern (ET) — New York, Miami</option>
-                  <option value="America/Chicago">Central (CT) — Chicago, Dallas</option>
-                  <option value="America/Denver">Mountain (MT) — Denver, Phoenix</option>
-                  <option value="America/Los_Angeles">Pacific (PT) — Los Angeles, Seattle</option>
-                  <option value="America/Anchorage">Alaska (AKT) — Anchorage</option>
-                  <option value="Pacific/Honolulu">Hawaii (HT) — Honolulu</option>
-                </optgroup>
-                <optgroup label="Other">
-                  <option value="UTC">UTC</option>
-                  <option value="Europe/London">London (GMT/BST)</option>
-                  <option value="Europe/Paris">Paris (CET)</option>
-                  <option value="Asia/Tokyo">Tokyo (JST)</option>
-                  <option value="Australia/Sydney">Sydney (AEST)</option>
-                </optgroup>
-              </select>
-            </div>
+
           </div>
           <button
             type="submit"
