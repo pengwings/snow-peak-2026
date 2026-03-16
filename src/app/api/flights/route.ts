@@ -3,7 +3,7 @@ import { db, Flight } from '@/lib/db';
 import { cookies } from 'next/headers';
 
 export async function GET() {
-  return NextResponse.json(db.flights);
+  return NextResponse.json(await db.getFlights());
 }
 
 export async function POST(request: Request) {
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   }
 
   // Remove existing flight for user if any
-  db.removeFlightForUser(user);
+  await db.removeFlightForUser(user);
 
   // Add new flight
   const newFlight: Flight = {
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     departureTime,
   };
 
-  db.addFlight(newFlight);
+  await db.addFlight(newFlight);
 
-  return NextResponse.json({ success: true, flights: db.flights });
+  return NextResponse.json({ success: true, flights: await db.getFlights() });
 }

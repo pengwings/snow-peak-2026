@@ -39,81 +39,120 @@ export type Activity = {
   votes: string[];
 };
 
-// In-memory global data store
-// Note: This will reset when the Node.js process / Vercel Serverless Function restarts.
-const globalData = {
-  users: [] as User[],
-  cabins: [
-    { id: '1', name: 'Cabin 1', capacity: 4, occupants: [] },
-    { id: '2', name: 'Cabin 2', capacity: 4, occupants: [] },
-    { id: '3', name: 'Cabin 3', capacity: 6, occupants: [] }
-  ] as Cabin[],
-  cars: [
-    { id: '1', name: 'SUV', driver: 'Alice', capacity: 5, passengers: [] },
-    { id: '2', name: 'Sedan', driver: 'Bob', capacity: 4, passengers: [] }
-  ] as Car[],
-  flights: [] as Flight[],
-  supplies: [
-    { id: '1', name: 'Groceries (Dinner)', buyer: null, amountPaid: null },
-    { id: '2', name: 'Snacks', buyer: null, amountPaid: null },
-    { id: '3', name: 'Drinks', buyer: null, amountPaid: null },
-    { id: '4', name: 'Firewood', buyer: null, amountPaid: null }
-  ] as Supply[],
-  activities: [] as Activity[]
+export type Todo = {
+  id: string;
+  text: string;
+  completed: boolean;
+  user: string;
 };
 
+import { neon } from '@neondatabase/serverless';
+
+const sql = neon(process.env.DATABASE_URL!);
+
 export const db = {
-  get users(): User[] {
-    return globalData.users;
+  async getUsers(): Promise<User[]> {
+    return (await sql`SELECT * FROM users`) as User[];
   },
-  addUser(name: string) {
-    if (!globalData.users.find(u => u.name === name)) {
-      globalData.users.push({ name });
-    }
+  async addUser(name: string) {
+    await sql`INSERT INTO users (name) VALUES (${name}) ON CONFLICT DO NOTHING`;
   },
 
-  get cabins(): Cabin[] {
-    return globalData.cabins;
+  async getCabins(): Promise<Cabin[]> {
+    const rows = await sql`SELECT * FROM cabins`;
+    return rows.map((r: any) => ({ 
+      ...r, 
+      occupants: typeof r.occupants === 'string' ? JSON.parse(r.occupants) : (r.occupants || [])
+    }));
   },
-  updateCabin(cabin: Cabin) {
-    const idx = globalData.cabins.findIndex(c => c.id === cabin.id);
-    if (idx !== -1) globalData.cabins[idx] = cabin;
-  },
-
-  get cars(): Car[] {
-    return globalData.cars;
-  },
-  updateCar(car: Car) {
-    const idx = globalData.cars.findIndex(c => c.id === car.id);
-    if (idx !== -1) globalData.cars[idx] = car;
+  async updateCabin(cabin: Cabin) {
+    await sql`UPDATE cabins 
+              SET occupants = ${JSON.stringify(cabin.occupants)}::jsonb 
+              WHERE id = ${cabin.id}`;
   },
 
-  get flights(): Flight[] {
-    return globalData.flights;
+  async getCars(): Promise<Car[]> {
+    const rows = await sql`SELECT * FROM cars`;
+    return rows.map((r: any) => ({
+      ...r,
+      passengers: typeof r.passengers === 'string' ? JSON.parse(r.passengers) : (r.passengers || [])
+    }));
   },
-  addFlight(flight: Flight) {
-    globalData.flights.push(flight);
-  },
-  removeFlightForUser(user: string) {
-    globalData.flights = globalData.flights.filter(f => f.user !== user);
-  },
-
-  get supplies(): Supply[] {
-    return globalData.supplies;
-  },
-  updateSupply(supply: Supply) {
-    const idx = globalData.supplies.findIndex(s => s.id === supply.id);
-    if (idx !== -1) globalData.supplies[idx] = supply;
+  async updateCar(car: Car) {
+    await sql`UPDATE cars 
+              SET passengers = ${JSON.stringify(car.passengers)}::jsonb 
+              WHERE id = ${car.id}`;
   },
 
-  get activities(): Activity[] {
-    return globalData.activities;
+  async getFlights(): Promise<Flight[]> {
+    const rows = await sql`SELECT * FROM flights`;
+    return rows.map((r: any) => ({
+      id: r.id,
+      user: r.username,
+      airport: r.airport,
+      arrivalTime: r.arrivaltime,
+      departureTime: r.departuretime
+    }));
   },
-  addActivity(activity: Activity) {
-    globalData.activities.push(activity);
+  async addFlight(flight: Flight) {
+    await sql`INSERT INTO flights (id, username, airport, arrivaltime, departuretime) 
+              VALUES (${flight.id}, ${flight.user}, ${flight.airport}, ${flight.arrivalTime}, ${flight.departureTime})`;
   },
-  updateActivity(activity: Activity) {
-    const idx = globalData.activities.findIndex(a => a.id === activity.id);
-    if (idx !== -1) globalData.activities[idx] = activity;
+  async removeFlightForUser(user: string) {
+    await sql`DELETE FROM flights WHERE username = ${user}`;
+  },
+
+  async getSupplies(): Promise<Supply[]> {
+    const rows = await sql`SELECT * FROM supplies`;
+    return rows.map((r: any) => ({
+      id: r.id,
+      name: r.name,
+      buyer: r.buyer,
+      amountPaid: r.amountpaid
+    }));
+  },
+  async updateSupply(supply: Supply) {
+    await sql`UPDATE supplies 
+              SET buyer = ${supply.buyer}, amountpaid = ${supply.amountPaid} 
+              WHERE id = ${supply.id}`;
+  },
+
+  async getActivities(): Promise<Activity[]> {
+    const rows = await sql`SELECT * FROM activities`;
+    return rows.map((r: any) => ({
+      ...r,
+      votes: typeof r.votes === 'string' ? JSON.parse(r.votes) : (r.votes || [])
+    }));
+  },
+  async addActivity(activity: Activity) {
+    await sql`INSERT INTO activities (id, name, proposer, votes) 
+              VALUES (${activity.id}, ${activity.name}, ${activity.proposer}, ${JSON.stringify(activity.votes)}::jsonb)`;
+  },
+  async updateActivity(activity: Activity) {
+    await sql`UPDATE activities 
+              SET votes = ${JSON.stringify(activity.votes)}::jsonb 
+              WHERE id = ${activity.id}`;
+  },
+
+  async getTodos(): Promise<Todo[]> {
+    const rows = await sql`SELECT * FROM todos`;
+    return rows.map((r: any) => ({
+      id: r.id,
+      text: r.text,
+      completed: r.completed,
+      user: r.username
+    }));
+  },
+  async addTodo(todo: Todo) {
+    await sql`INSERT INTO todos (id, text, completed, username) 
+              VALUES (${todo.id}, ${todo.text}, ${todo.completed}, ${todo.user})`;
+  },
+  async updateTodo(todo: Todo) {
+    await sql`UPDATE todos 
+              SET text = ${todo.text}, completed = ${todo.completed} 
+              WHERE id = ${todo.id}`;
+  },
+  async removeTodo(todoId: string) {
+    await sql`DELETE FROM todos WHERE id = ${todoId}`;
   }
 };

@@ -95,6 +95,17 @@ export default function Home() {
             </span>
           </div>
         </Link>
+        <Link href="/todos" className="block group">
+          <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm group-hover:shadow-md transition duration-200 h-full flex flex-col">
+            <h2 className="text-xl font-bold text-gray-900 mb-2 flex items-center">
+              ✅ Todos
+            </h2>
+            <p className="text-gray-600 flex-1">Create and manage a shared trip checklist.</p>
+            <span className="text-blue-600 font-medium text-sm mt-4 flex items-center group-hover:translate-x-1 transition-transform">
+              View Todos &rarr;
+            </span>
+          </div>
+        </Link>
       </div>
     </div>
   );

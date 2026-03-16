@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import { cookies } from 'next/headers';
 
 export async function GET() {
-  return NextResponse.json(db.cabins);
+  return NextResponse.json(await db.getCabins());
 }
 
 export async function POST(request: Request) {
@@ -18,24 +18,25 @@ export async function POST(request: Request) {
   const { cabinId } = await request.json();
 
   // Remove user from any existing cabin
-  const allCabins = db.cabins;
-  allCabins.forEach((cabin) => {
+  const allCabins = await db.getCabins();
+  for (const cabin of allCabins) {
     if (cabin.occupants.includes(user)) {
       cabin.occupants = cabin.occupants.filter((occ) => occ !== user);
-      db.updateCabin(cabin);
+      await db.updateCabin(cabin);
     }
-  });
+  }
 
   // Add user to the new cabin if cabinId is provided
   if (cabinId) {
-    const targetCabin = db.cabins.find((c) => c.id === cabinId);
+    const updatedCabins = await db.getCabins();
+    const targetCabin = updatedCabins.find((c) => c.id === cabinId);
     if (targetCabin && targetCabin.occupants.length < targetCabin.capacity) {
       targetCabin.occupants.push(user);
-      db.updateCabin(targetCabin);
+      await db.updateCabin(targetCabin);
     } else {
       return NextResponse.json({ error: 'Cabin full or not found' }, { status: 400 });
     }
   }
 
-  return NextResponse.json({ success: true, cabins: db.cabins });
+  return NextResponse.json({ success: true, cabins: await db.getCabins() });
 }

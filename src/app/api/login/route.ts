@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   const trimmedName = name.trim();
 
   // Add user to db
-  db.addUser(trimmedName);
+  await db.addUser(trimmedName);
 
   const response = NextResponse.json({ success: true, name: trimmedName });
   response.cookies.set('user', trimmedName, {

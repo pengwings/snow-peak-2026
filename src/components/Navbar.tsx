@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Home, HomeIcon as Cabin, Car, Plane, ShoppingCart, Activity } from 'lucide-react';
+import { Home, HomeIcon as Cabin, Car, Plane, ShoppingCart, Activity, CheckSquare } from 'lucide-react';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -33,6 +33,7 @@ export default function Navbar() {
     { href: '/flights', label: 'Flights', icon: Plane },
     { href: '/supplies', label: 'Supplies', icon: ShoppingCart },
     { href: '/activities', label: 'Activities', icon: Activity },
+    { href: '/todos', label: 'Todos', icon: CheckSquare },
   ];
 
   return (

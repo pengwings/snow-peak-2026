@@ -3,7 +3,7 @@ import { db, Activity } from '@/lib/db';
 import { cookies } from 'next/headers';
 
 export async function GET() {
-  return NextResponse.json(db.activities);
+  return NextResponse.json(await db.getActivities());
 }
 
 export async function POST(request: Request) {
@@ -26,9 +26,10 @@ export async function POST(request: Request) {
       proposer: user,
       votes: [user], // proposer auto-votes
     };
-    db.addActivity(newActivity);
+    await db.addActivity(newActivity);
   } else if (action === 'vote') {
-    const activity = db.activities.find((a) => a.id === activityId);
+    const activities = await db.getActivities();
+    const activity = activities.find((a) => a.id === activityId);
     if (!activity) return NextResponse.json({ error: 'Activity not found' }, { status: 404 });
 
     const hasVoted = activity.votes.includes(user);
@@ -39,8 +40,8 @@ export async function POST(request: Request) {
       // vote
       activity.votes.push(user);
     }
-    db.updateActivity(activity);
+    await db.updateActivity(activity);
   }
 
-  return NextResponse.json({ success: true, activities: db.activities });
+  return NextResponse.json({ success: true, activities: await db.getActivities() });
 }
