@@ -109,16 +109,19 @@ export default function TodosPage() {
             onChange={(e) => setNewText(e.target.value)}
           />
           <div className="flex gap-3">
-            <select
-              className="flex-1 border-gray-300 rounded-md shadow-sm border px-3 py-2 text-gray-700"
-              value={newAssignee}
-              onChange={(e) => setNewAssignee(e.target.value)}
-            >
-              <option value="">Unassigned</option>
-              {users.map((u) => (
-                          <option key={u} value={u}>{displayName(u)}</option>
-              ))}
-            </select>
+            <div className="flex-1">
+              <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--muted)' }}>Assign to</label>
+              <select
+                className="w-full border-gray-300 rounded-md shadow-sm border px-3 py-2 text-gray-700"
+                value={newAssignee}
+                onChange={(e) => setNewAssignee(e.target.value)}
+              >
+                <option value="">Unassigned</option>
+                {users.map((u) => (
+                  <option key={u} value={u}>{displayName(u)}</option>
+                ))}
+              </select>
+            </div>
             <button
               type="submit"
               className="px-6 py-2 text-sm tracking-widest uppercase"
@@ -148,16 +151,19 @@ export default function TodosPage() {
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs text-gray-400">Added by {displayName(todo.user)}</span>
                     {users.length > 0 ? (
-                      <select
-                        className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600"
-                        value={todo.assignee ?? ''}
-                        onChange={(e) => handleAssigneeChange(todo, e.target.value)}
-                      >
-                        <option value="">Unassigned</option>
-                        {users.map((u) => (
-                                    <option key={u} value={u}>{displayName(u)}</option>
-                        ))}
-                      </select>
+                      <>
+                        <span className="text-xs" style={{ color: 'var(--muted)' }}>Assign to:</span>
+                        <select
+                          className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600"
+                          value={todo.assignee ?? ''}
+                          onChange={(e) => handleAssigneeChange(todo, e.target.value)}
+                        >
+                          <option value="">Unassigned</option>
+                          {users.map((u) => (
+                            <option key={u} value={u}>{displayName(u)}</option>
+                          ))}
+                        </select>
+                      </>
                     ) : todo.assignee ? (
                       <span className="text-xs text-blue-600">→ {displayName(todo.assignee)}</span>
                     ) : null}

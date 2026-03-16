@@ -82,12 +82,12 @@ async function init() {
   const cabinCount = await sql`SELECT count(*) FROM cabins`;
   if (parseInt(cabinCount[0].count) === 0) {
     console.log("Seeding cabins...");
-    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('9',  'Cabin 09', 4, '[]')`;
-    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('10', 'Cabin 10', 4, '[]')`;
-    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('11', 'Cabin 11', 4, '[]')`;
-    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('12', 'Cabin 12', 4, '[]')`;
-    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('13', 'Cabin 13', 4, '[]')`;
-    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('14', 'Cabin 14', 4, '[]')`;
+    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('9',  'Cabin 09', 3, '[]')`;
+    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('10', 'Cabin 10', 3, '[]')`;
+    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('11', 'Cabin 11', 3, '[]')`;
+    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('12', 'Cabin 12', 3, '[]')`;
+    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('13', 'Cabin 13', 3, '[]')`;
+    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('14', 'Cabin 14', 3, '[]')`;
   }
 
   console.log("Database initialization complete.");

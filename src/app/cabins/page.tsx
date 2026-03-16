@@ -51,14 +51,39 @@ export default function CabinsPage() {
       <div className="bg-[#f2ece3] rounded-xl p-0 mb-12 shadow-inner relative overflow-hidden h-[600px] w-full max-w-[500px] mx-auto border-2 border-stone-300">
         
         {/* Drawn Path Background */}
-        <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-          <path d="M 250 0 Q 230 150 250 300 T 220 600" className="stroke-stone-300" strokeWidth="30" fill="none" strokeLinecap="round" />
-          <path d="M 250 0 Q 230 150 250 300 T 220 600" className="stroke-[#eae4db]" strokeWidth="20" fill="none" strokeLinecap="round" />
-          
-          {/* Some simple grass decorations */}
-          <path d="M 50 100 Q 60 80 70 100" stroke="#dcd3c5" strokeWidth="2" fill="none" />
-          <path d="M 400 400 Q 410 380 420 400" stroke="#dcd3c5" strokeWidth="2" fill="none" />
-          <path d="M 100 500 Q 110 480 120 500" stroke="#dcd3c5" strokeWidth="2" fill="none" />
+        <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 500 600">
+          {/* Straight road down the center, ending 25% above the bottom */}
+          <line x1="250" y1="0" x2="250" y2="450" stroke="#c8c0b4" strokeWidth="30" strokeLinecap="round" />
+          <line x1="250" y1="0" x2="250" y2="450" stroke="#eae4db" strokeWidth="20" strokeLinecap="round" />
+
+          {/* Grass — left edge */}
+          <path d="M 5,155 Q 2,135 6,117" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M 16,152 Q 20,132 13,114" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M 27,157 Q 30,137 24,119" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M 38,153 Q 43,133 37,115" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+
+          <path d="M 3,340 Q 6,320 2,302" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M 15,338 Q 19,318 13,300" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M 26,342 Q 29,322 23,304" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+
+          <path d="M 5,530 Q 2,510 6,492" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M 18,527 Q 22,507 16,489" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M 30,532 Q 34,512 28,494" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M 43,528 Q 47,508 41,490" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+
+          {/* Grass — right edge */}
+          <path d="M 495,190 Q 492,170 496,152" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M 483,187 Q 479,167 483,149" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M 471,192 Q 468,172 472,154" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+
+          <path d="M 498,408 Q 494,388 497,370" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M 486,405 Q 482,385 486,367" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M 474,410 Q 470,390 474,372" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+
+          <path d="M 497,548 Q 493,528 496,510" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M 485,544 Q 481,524 484,506" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M 473,549 Q 469,529 472,511" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M 461,545 Q 457,525 460,507" stroke="#dcd3c5" strokeWidth="2" fill="none" strokeLinecap="round" />
         </svg>
 
         <div className="absolute inset-0 z-10 w-full h-full">
@@ -68,16 +93,17 @@ export default function CabinsPage() {
             
             // Extract cabin number to match with layout
             const match = cabin.name.match(/\d+/);
-            const cabinNum = match ? match[0] : null;
+            // Use parseInt to normalize '09' -> 9 so the key matches
+            const cabinNum = match ? String(parseInt(match[0], 10)) : null;
             
-            // Layout data based on the provided image
+            // Road is straight down x=50%. Left cabins ~25%, right cabins ~72%.
             const mapLayout: Record<string, { top: string; left: string; available: boolean }> = {
-              '9': { top: '22%', left: '38%', available: true },
-              '10': { top: '38%', left: '72%', available: false },
-              '11': { top: '42%', left: '32%', available: true },
-              '12': { top: '58%', left: '62%', available: true },
-              '13': { top: '62%', left: '26%', available: true },
-              '14': { top: '80%', left: '55%', available: true },
+              '9':  { top: '22%', left: '25%', available: true  },  // left, upper
+              '10': { top: '28%', left: '72%', available: false },  // right, upper — not ours
+              '11': { top: '43%', left: '25%', available: true  },  // left, middle
+              '12': { top: '53%', left: '72%', available: true  },  // right, middle
+              '13': { top: '62%', left: '25%', available: true  },  // left, lower
+              '14': { top: '78%', left: '72%', available: true  },  // right, past road end
             };
 
             const layout = cabinNum && mapLayout[cabinNum];
