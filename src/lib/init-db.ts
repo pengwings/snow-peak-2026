@@ -45,7 +45,7 @@ async function init() {
   await sql`ALTER TABLE flights ADD COLUMN IF NOT EXISTS flightType TEXT DEFAULT 'arriving';`;
 
   await sql`
-    CREATE TABLE IF NOT EXISTS supplies (
+    CREATE TABLE IF NOT EXISTS expenses (
       id TEXT PRIMARY KEY,
       name TEXT,
       buyer TEXT,

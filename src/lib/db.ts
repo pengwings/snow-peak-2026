@@ -21,7 +21,7 @@ export type Flight = {
   flightType: 'arriving' | 'departing';
 };
 
-export type Supply = {
+export type Expense = {
   id: string;
   name: string;
   buyer: string | null;
@@ -93,8 +93,8 @@ export const db = {
     await sql`DELETE FROM flights WHERE username = ${user} AND flighttype = ${flightType}`;
   },
 
-  async getSupplies(): Promise<Supply[]> {
-    const rows = await sql`SELECT * FROM supplies`;
+  async getExpenses(): Promise<Expense[]> {
+    const rows = await sql`SELECT * FROM expenses`;
     return rows.map((r: any) => ({
       id: r.id,
       name: r.name,
@@ -102,10 +102,17 @@ export const db = {
       amountPaid: r.amountpaid
     }));
   },
-  async updateSupply(supply: Supply) {
-    await sql`UPDATE supplies 
-              SET buyer = ${supply.buyer}, amountpaid = ${supply.amountPaid} 
-              WHERE id = ${supply.id}`;
+  async addExpense(expense: Expense) {
+    await sql`INSERT INTO expenses (id, name, buyer, amountpaid)
+              VALUES (${expense.id}, ${expense.name}, ${expense.buyer || null}, ${expense.amountPaid || null})`;
+  },
+  async updateExpense(expense: Expense) {
+    await sql`UPDATE expenses
+              SET buyer = ${expense.buyer}, amountpaid = ${expense.amountPaid}
+              WHERE id = ${expense.id}`;
+  },
+  async removeExpense(expenseId: string) {
+    await sql`DELETE FROM expenses WHERE id = ${expenseId}`;
   },
 
   async getActivities(): Promise<Activity[]> {

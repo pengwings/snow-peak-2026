@@ -31,7 +31,7 @@ export default function Navbar() {
     { href: '/', label: 'Home', icon: Home },
     { href: '/cabins', label: 'Cabins', icon: Cabin },
     { href: '/flights', label: 'Flights', icon: Plane },
-    { href: '/supplies', label: 'Supplies', icon: ShoppingCart },
+    { href: '/expenses', label: 'Expenses', icon: ShoppingCart },
     { href: '/activities', label: 'Activities', icon: Activity },
     { href: '/todos', label: 'Todos', icon: CheckSquare },
   ];
