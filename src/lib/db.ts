@@ -9,13 +9,6 @@ export type Cabin = {
   occupants: string[];
 };
 
-export type Car = {
-  id: string;
-  name: string;
-  driver: string;
-  capacity: number;
-  passengers: string[];
-};
 
 export type Flight = {
   id: string;
@@ -72,19 +65,6 @@ export const db = {
     await sql`UPDATE cabins 
               SET occupants = ${JSON.stringify(cabin.occupants)}::jsonb 
               WHERE id = ${cabin.id}`;
-  },
-
-  async getCars(): Promise<Car[]> {
-    const rows = await sql`SELECT * FROM cars`;
-    return rows.map((r: any) => ({
-      ...r,
-      passengers: typeof r.passengers === 'string' ? JSON.parse(r.passengers) : (r.passengers || [])
-    }));
-  },
-  async updateCar(car: Car) {
-    await sql`UPDATE cars 
-              SET passengers = ${JSON.stringify(car.passengers)}::jsonb 
-              WHERE id = ${car.id}`;
   },
 
   async getFlights(): Promise<Flight[]> {

@@ -7,6 +7,9 @@ const sql = neon(process.env.DATABASE_URL!);
 async function init() {
   console.log("Creating/updating tables...");
 
+  // Drop cars table if it exists
+  await sql`DROP TABLE IF EXISTS cars`;
+
   await sql`
     CREATE TABLE IF NOT EXISTS users (
       name TEXT PRIMARY KEY
@@ -19,16 +22,6 @@ async function init() {
       name TEXT,
       capacity INTEGER,
       occupants JSONB DEFAULT '[]'
-    );
-  `;
-
-  await sql`
-    CREATE TABLE IF NOT EXISTS cars (
-      id TEXT PRIMARY KEY,
-      name TEXT,
-      driver TEXT,
-      capacity INTEGER,
-      passengers JSONB DEFAULT '[]'
     );
   `;
 
