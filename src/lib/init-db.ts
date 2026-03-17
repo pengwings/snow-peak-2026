@@ -1,8 +1,8 @@
-import { neon } from '@neondatabase/serverless';
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
-const sql = neon(process.env.DATABASE_URL!);
+
+import { sql } from './db-client';
 
 async function init() {
   console.log("Creating/updating tables...");
@@ -80,7 +80,6 @@ async function init() {
   if (parseInt(cabinCount[0].count) === 0) {
     console.log("Seeding cabins...");
     await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('9',  'Cabin 09', 3, '[]')`;
-    await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('10', 'Cabin 10', 3, '[]')`;
     await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('11', 'Cabin 11', 3, '[]')`;
     await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('12', 'Cabin 12', 3, '[]')`;
     await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('13', 'Cabin 13', 3, '[]')`;

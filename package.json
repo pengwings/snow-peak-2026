@@ -3,10 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "docker compose up -d && npx wait-on tcp:5432 --timeout 30000 && NODE_ENV=development npx tsx src/lib/init-db.ts",
     "dev": "next dev",
+    "db:init": "NODE_ENV=development npx tsx src/lib/init-db.ts",
     "build": "npx tsx src/lib/init-db.ts && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postdev": "docker compose stop"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
@@ -14,6 +17,7 @@
     "dotenv": "^17.3.1",
     "lucide-react": "^0.577.0",
     "next": "16.1.6",
+    "pg": "^8.20.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "uuid": "^13.0.0"
@@ -21,12 +25,14 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.18.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^9.0.4"
   }
 }

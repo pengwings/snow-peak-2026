@@ -4,22 +4,27 @@ A full-stack, nature-inspired web application built with [Next.js](https://nextj
 
 ## Features
 
-- **Guest Sessions & User Accounts**: Allows users to start planning immediately with guest sessions, seamlessly migrating data to authenticated accounts later.
-- **Flight Coordination**: Track and coordinate arrival/departure flight details for all trip members.
-- **Cabin & Lodging Management**: Assign and manage cabin or room assignments with ranking capabilities.
+- **Guest Sessions & User Accounts**: Start planning immediately as a guest; data migrates to your account on sign-up.
+- **Flight Coordination**: Track arrival/departure details for all trip members.
+- **Cabin & Lodging Management**: Assign and manage cabin assignments with ranking.
 - **Activity Planning**: Collaborative itinerary and activity planning.
-- **Expense Tracking**: Keep track of shared expenses and individual costs across the group.
-- **Todo Lists**: Shared actionable todo lists to keep track of pre-trip and trip responsibilities.
-- **Nature-Inspired Aesthetic**: A minimal, clean user interface styled manually with Tailwind CSS to match the serene vibe of a camping trip.
+- **Expense Tracking**: Shared and individual expense tracking across the group.
+- **Todo Lists**: Shared actionable todo lists for pre-trip and trip responsibilities.
+- **Nature-Inspired Aesthetic**: Minimal, clean UI styled with Tailwind CSS.
 
 ## Tech Stack
 
 - **Framework**: Next.js 16 (App Router)
 - **Styling**: Tailwind CSS (v4)
-- **Database**: PostgreSQL (via Neon Serverless)
+- **Database**: PostgreSQL — Docker locally, [Neon](https://neon.tech) in production
 - **Icons**: Lucide React
 - **Authentication**: Custom cookie-based guest & user sessions
 - **Deployment**: Vercel
+
+## Prerequisites
+
+- [Docker](https://www.docker.com/) (for the local Postgres instance)
+- Node.js 18+
 
 ## Getting Started
 
@@ -29,12 +34,13 @@ A full-stack, nature-inspired web application built with [Next.js](https://nextj
    npm install
    ```
 
-2. **Set up the database:**
-   Ensure your `.env.local` contains the right Neon/PostgreSQL connection string. Database initialization occurs during the build process, or you can run it manually:
+2. **Set up your env file:**
 
    ```bash
-   npx tsx src/lib/init-db.ts
+   cp .env.local.example .env.local
    ```
+
+   The default values connect to the local Docker Postgres instance — no edits needed for local dev.
 
 3. **Run the development server:**
 
@@ -42,5 +48,12 @@ A full-stack, nature-inspired web application built with [Next.js](https://nextj
    npm run dev
    ```
 
-4. **Open your browser:**
-   Navigate to [http://localhost:3000](http://localhost:3000) to see the application.
+   This automatically:
+   - Starts a Postgres Docker container (`snow-peak-postgres`) on port `5432`
+   - Waits for it to be ready
+   - Runs the database init/migration script
+   - Starts the Next.js dev server at [http://localhost:3000](http://localhost:3000)
+
+## Production Deployment (Vercel)
+
+Set the `DATABASE_URL` environment variable in your Vercel project settings to your [Neon](https://neon.tech) connection string. The app automatically uses the Neon WebSocket driver in production.

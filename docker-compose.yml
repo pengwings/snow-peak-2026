@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: snow-peak-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: snowpeak
+      POSTGRES_PASSWORD: snowpeak
+      POSTGRES_DB: snowpeak
+    ports:
+      - "5432:5432"
+    volumes:
+      - snow_peak_pgdata:/var/lib/postgresql/data
+
+volumes:
+  snow_peak_pgdata:
