@@ -51,7 +51,7 @@ function createNeonClient(): SqlQuery {
   }
 
   return (strings: TemplateStringsArray, ...values: unknown[]) =>
-    getClient()(strings, ...(values as Parameters<typeof getClient>[1][])) as Promise<any[]>;
+    getClient()(strings, ...values) as Promise<any[]>;
 }
 
 export const sql: SqlQuery =
