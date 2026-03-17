@@ -97,7 +97,6 @@ export default function CabinsPage() {
             // Road is straight down x=50%. Left cabins ~25%, right cabins ~72%.
             const mapLayout: Record<string, { top: string; left: string; available: boolean }> = {
               '9': { top: '22%', left: '25%', available: true },  // left, upper
-              '10': { top: '28%', left: '72%', available: false },  // right, upper — not ours
               '11': { top: '43%', left: '25%', available: true },  // left, middle
               '12': { top: '53%', left: '72%', available: true },  // right, middle
               '13': { top: '62%', left: '25%', available: true },  // left, lower
@@ -167,6 +166,17 @@ export default function CabinsPage() {
               </div>
             );
           })}
+
+          {/* Cabin 10 — hardcoded placeholder, not available to this group */}
+          <div
+            className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center opacity-40 cursor-not-allowed"
+            style={{ top: '28%', left: '72%' }}
+            title="Cabin 10 — not part of our group's booking"
+          >
+            <div className="w-14 h-14 relative flex items-center justify-center rounded-md rotate-[-2deg] shadow-sm bg-[#c5c1b6] text-gray-500">
+              <div className="font-bold text-xl drop-shadow-sm leading-none pt-1">10</div>
+            </div>
+          </div>
         </div>
       </div>
 
