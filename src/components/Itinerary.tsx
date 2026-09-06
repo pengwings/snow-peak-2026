@@ -15,9 +15,9 @@ const minutesOf = (t: string) => {
   return h * 60 + m;
 };
 
-// Untimed end → assume one hour, capped at midnight
+// Untimed end → assume 30 minutes, capped at midnight
 const endMinutesOf = (item: ScheduleItem) =>
-  item.endTime ? minutesOf(item.endTime) : Math.min(minutesOf(item.time) + 60, 24 * 60);
+  item.endTime ? minutesOf(item.endTime) : Math.min(minutesOf(item.time) + 30, 24 * 60);
 
 const formatTime = (t: string) => format(parseISO(`2000-01-01T${t}`), 'h:mm a');
 
@@ -75,6 +75,8 @@ function layoutDay(events: ScheduleItem[], gridStartMin: number): Positioned[] {
 export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
   const [items, setItems] = useState<ScheduleItem[]>([]);
   const [error, setError] = useState('');
+  // Clicked event rises above any block overlapping it
+  const [frontId, setFrontId] = useState<string | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [day, setDay] = useState(TRIP_DAYS[0]);
@@ -355,16 +357,17 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
                 {layoutDay(timed.filter((i) => i.day === d), gridStartMin).map(({ item, top, height, leftPct, widthPct }) => (
                   <div
                     key={item.id}
-                    className={`group absolute overflow-hidden px-1.5 py-0.5 text-xs ${isAdmin ? 'cursor-pointer' : ''}`}
+                    className="group absolute overflow-hidden px-1.5 py-0.5 text-xs cursor-pointer"
                     style={{
                       ...eventBlockStyle,
                       top,
                       height,
                       left: `${leftPct}%`,
                       width: `calc(${widthPct}% - 3px)`,
+                      ...(frontId === item.id && { zIndex: 10, boxShadow: '0 1px 5px rgba(0, 0, 0, 0.3)' }),
                     }}
                     title={`${formatTime(item.time)}${item.endTime ? `–${formatTime(item.endTime)}` : ''} ${item.title}${item.description ? ` — ${item.description}` : ''}`}
-                    onClick={(e) => { e.stopPropagation(); if (isAdmin) handleEdit(item); }}
+                    onClick={(e) => { e.stopPropagation(); setFrontId(item.id); if (isAdmin) handleEdit(item); }}
                   >
                     <div className="font-medium truncate">{item.title}</div>
                     <div className="text-[10px]" style={{ color: '#5a5248' }}>
