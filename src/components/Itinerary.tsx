@@ -15,9 +15,9 @@ const minutesOf = (t: string) => {
   return h * 60 + m;
 };
 
-// Untimed end → assume 30 minutes, capped at midnight
+// Untimed end → assume one hour, capped at midnight
 const endMinutesOf = (item: ScheduleItem) =>
-  item.endTime ? minutesOf(item.endTime) : Math.min(minutesOf(item.time) + 30, 24 * 60);
+  item.endTime ? minutesOf(item.endTime) : Math.min(minutesOf(item.time) + 60, 24 * 60);
 
 const formatTime = (t: string) => format(parseISO(`2000-01-01T${t}`), 'h:mm a');
 
