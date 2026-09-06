@@ -8,6 +8,7 @@ A full-stack, nature-inspired web application built with [Next.js](https://nextj
 - **Flight Coordination**: Track arrival/departure details for all trip members.
 - **Cabin & Lodging Management**: Assign and manage cabin assignments with ranking.
 - **Activity Planning**: Collaborative itinerary and activity planning.
+- **Trip Schedule**: Day-by-day itinerary visible to everyone, editable only by trip admins.
 - **Expense Tracking**: Shared and individual expense tracking across the group.
 - **Todo Lists**: Shared actionable todo lists for pre-trip and trip responsibilities.
 - **Nature-Inspired Aesthetic**: Minimal, clean UI styled with Tailwind CSS.

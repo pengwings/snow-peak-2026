@@ -12,9 +12,14 @@ async function init() {
 
   await sql`
     CREATE TABLE IF NOT EXISTS users (
-      name TEXT PRIMARY KEY
+      name TEXT PRIMARY KEY,
+      is_admin BOOLEAN DEFAULT false
     );
   `;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false;`;
+  // Brian is the trip admin
+  await sql`INSERT INTO users (name, is_admin) VALUES ('Brian', true)
+            ON CONFLICT (name) DO UPDATE SET is_admin = true`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS cabins (
@@ -74,6 +79,18 @@ async function init() {
     );
   `;
   await sql`ALTER TABLE todos ADD COLUMN IF NOT EXISTS assignee TEXT;`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS schedule_items (
+      id TEXT PRIMARY KEY,
+      day TEXT,
+      time TEXT DEFAULT '',
+      end_time TEXT DEFAULT '',
+      title TEXT,
+      description TEXT DEFAULT ''
+    );
+  `;
+  await sql`ALTER TABLE schedule_items ADD COLUMN IF NOT EXISTS end_time TEXT DEFAULT '';`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS packing_items (

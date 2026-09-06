@@ -1,5 +1,6 @@
 export type User = {
   name: string;
+  isAdmin: boolean;
 };
 
 export type Cabin = {
@@ -44,6 +45,15 @@ export type Todo = {
   assignee: string | null;
 };
 
+export type ScheduleItem = {
+  id: string;
+  day: string;      // YYYY-MM-DD
+  time: string;     // HH:MM, or '' for all-day
+  endTime: string;  // HH:MM, or '' if open-ended
+  title: string;
+  description: string;
+};
+
 export type PackingItem = {
   id: string;
   name: string;
@@ -58,10 +68,42 @@ import { sql } from './db-client';
 
 export const db = {
   async getUsers(): Promise<User[]> {
-    return (await sql`SELECT * FROM users`) as User[];
+    const rows = await sql`SELECT * FROM users`;
+    return rows.map((r: any) => ({
+      name: r.name,
+      isAdmin: !!r.is_admin,
+    }));
+  },
+  async getUser(name: string): Promise<User | null> {
+    const rows = await sql`SELECT * FROM users WHERE name = ${name}`;
+    return rows.length ? { name: rows[0].name, isAdmin: !!rows[0].is_admin } : null;
   },
   async addUser(name: string) {
     await sql`INSERT INTO users (name) VALUES (${name}) ON CONFLICT DO NOTHING`;
+  },
+
+  async getScheduleItems(): Promise<ScheduleItem[]> {
+    const rows = await sql`SELECT * FROM schedule_items ORDER BY day, time`;
+    return rows.map((r: any) => ({
+      id: r.id,
+      day: r.day,
+      time: r.time ?? '',
+      endTime: r.end_time ?? '',
+      title: r.title,
+      description: r.description ?? '',
+    }));
+  },
+  async addScheduleItem(item: ScheduleItem) {
+    await sql`INSERT INTO schedule_items (id, day, time, end_time, title, description)
+              VALUES (${item.id}, ${item.day}, ${item.time}, ${item.endTime}, ${item.title}, ${item.description})`;
+  },
+  async updateScheduleItem(item: ScheduleItem) {
+    await sql`UPDATE schedule_items
+              SET day = ${item.day}, time = ${item.time}, end_time = ${item.endTime}, title = ${item.title}, description = ${item.description}
+              WHERE id = ${item.id}`;
+  },
+  async removeScheduleItem(itemId: string) {
+    await sql`DELETE FROM schedule_items WHERE id = ${itemId}`;
   },
 
   async getCabins(): Promise<Cabin[]> {

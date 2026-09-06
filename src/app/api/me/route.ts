@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getSessionUser } from '@/lib/auth';
 
 export async function GET() {
-  const cookieStore = await cookies();
-  const userCookie = cookieStore.get('user');
+  const user = await getSessionUser();
 
-  if (!userCookie || !userCookie.value) {
-    return NextResponse.json({ user: null });
+  if (!user) {
+    return NextResponse.json({ user: null, isAdmin: false });
   }
 
-  return NextResponse.json({ user: userCookie.value });
+  return NextResponse.json({ user: user.name, isAdmin: user.isAdmin });
 }
