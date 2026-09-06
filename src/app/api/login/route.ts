@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { findMatchingName } from '@/lib/nameMatch';
 
 export async function POST(request: Request) {
   const { name } = await request.json();
@@ -8,18 +9,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Name is required' }, { status: 400 });
   }
 
-  const trimmedName = name.trim();
-
-  // Check if user exists in the database
+  // Match case-insensitively and tolerate small typos, resolving to the
+  // canonical name so all data stays keyed under it.
   const users = await db.getUsers();
-  const userExists = users.some(u => u.name === trimmedName);
+  const matchedName = findMatchingName(name, users.map(u => u.name));
 
-  if (!userExists) {
+  if (!matchedName) {
     return NextResponse.json({ error: 'User not found. Please contact an administrator.' }, { status: 403 });
   }
 
-  const response = NextResponse.json({ success: true, name: trimmedName });
-  response.cookies.set('user', trimmedName, {
+  const response = NextResponse.json({ success: true, name: matchedName });
+  response.cookies.set('user', matchedName, {
     httpOnly: true,
     path: '/',
     // session cookie
