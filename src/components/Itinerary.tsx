@@ -94,11 +94,20 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
     setSelected({ item, x, y });
   };
 
+  // Closing the popout also drops the clicked block back out of the foreground
+  const closePopout = () => {
+    setSelected(null);
+    setFrontId(null);
+  };
+
   // The popout is pinned to the viewport, so close it as soon as anything scrolls
   // (capture phase also catches the calendar's own horizontal scroll)
   useEffect(() => {
     if (!selected) return;
-    const close = () => setSelected(null);
+    const close = () => {
+      setSelected(null);
+      setFrontId(null);
+    };
     window.addEventListener('scroll', close, true);
     return () => window.removeEventListener('scroll', close, true);
   }, [selected]);
@@ -176,7 +185,7 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
       body: JSON.stringify({ action: 'delete', id }),
     });
     if (editingId === id) resetForm();
-    if (selected?.item.id === id) setSelected(null);
+    if (selected?.item.id === id) closePopout();
     fetchItems();
   };
 
@@ -430,7 +439,7 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
       {selected && (
         <>
           {/* Invisible click-catcher: clicking anywhere else closes the popout */}
-          <div className="fixed inset-0 z-40" onClick={() => setSelected(null)} />
+          <div className="fixed inset-0 z-40" onClick={closePopout} />
           <div
             className="fixed z-50 p-5"
             style={{
@@ -444,7 +453,7 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
           >
             <button
               className="absolute top-3 right-3 text-gray-400 hover:text-gray-700"
-              onClick={() => setSelected(null)}
+              onClick={closePopout}
               title="Close"
             >
               <X className="w-4 h-4" />
@@ -468,7 +477,7 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
             {isAdmin && (
               <div className="flex gap-3 mt-4">
                 <button
-                  onClick={() => { handleEdit(selected.item); setSelected(null); }}
+                  onClick={() => { handleEdit(selected.item); closePopout(); }}
                   className="inline-flex items-center gap-1.5 px-4 py-2 text-xs tracking-widest uppercase"
                   style={{ background: 'var(--accent)', color: '#f5f0e8' }}
                 >
