@@ -9,6 +9,7 @@ import { displayName } from '@/lib/displayName';
 export default function PackingPage() {
   const [items, setItems] = useState<PackingItem[]>([]);
   const [user, setUser] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [users, setUsers] = useState<string[]>([]);
   const [newSharedName, setNewSharedName] = useState('');
   const [newSharedAssignee, setNewSharedAssignee] = useState('');
@@ -25,10 +26,13 @@ export default function PackingPage() {
           router.push('/login');
         } else {
           setUser(data.user);
+          setIsAdmin(data.isAdmin);
         }
       });
 
-    fetchItems();
+    fetch('/api/packing')
+      .then((res) => res.json())
+      .then(setItems);
     // Fetch user list for assignee dropdown
     fetch('/api/users')
       .then((r) => r.json())
@@ -139,7 +143,10 @@ export default function PackingPage() {
           <h2 className="font-medium text-sm uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
             Provided at the Campground ({provided.length})
           </h2>
-          <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>No need to pack these — they&apos;ll be there waiting for you.</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+            No need to pack these — they&apos;ll be there waiting for you.
+            {!isAdmin && ' Only a trip admin can change this list.'}
+          </p>
         </div>
         {provided.length === 0 ? (
           <div className="p-6 text-center text-gray-400 italic">Nothing listed yet.</div>
@@ -149,32 +156,34 @@ export default function PackingPage() {
               <li key={item.id} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition">
                 <Check className="w-5 h-5 text-green-600 shrink-0" />
                 <span className="flex-1 text-gray-900 truncate">{item.name}</span>
-                {deleteButton(item)}
+                {isAdmin && deleteButton(item)}
               </li>
             ))}
           </ul>
         )}
-        <form
-          onSubmit={handleAddProvided}
-          className="flex gap-2 px-4 py-3"
-          style={{ borderTop: '1px solid var(--border)', background: 'var(--card)' }}
-        >
-          <input
-            type="text"
-            className="flex-1 px-3 py-1.5 text-sm focus:outline-none"
-            style={{ border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
-            placeholder="Add something the campground provides"
-            value={newProvidedName}
-            onChange={(e) => setNewProvidedName(e.target.value)}
-          />
-          <button
-            type="submit"
-            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs tracking-widest uppercase"
-            style={{ background: 'var(--accent)', color: '#f5f0e8' }}
+        {isAdmin && (
+          <form
+            onSubmit={handleAddProvided}
+            className="flex gap-2 px-4 py-3"
+            style={{ borderTop: '1px solid var(--border)', background: 'var(--card)' }}
           >
-            <Plus className="w-3.5 h-3.5" /> Add
-          </button>
-        </form>
+            <input
+              type="text"
+              className="flex-1 px-3 py-1.5 text-sm focus:outline-none"
+              style={{ border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
+              placeholder="Add something the campground provides"
+              value={newProvidedName}
+              onChange={(e) => setNewProvidedName(e.target.value)}
+            />
+            <button
+              type="submit"
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs tracking-widest uppercase"
+              style={{ background: 'var(--accent)', color: '#f5f0e8' }}
+            >
+              <Plus className="w-3.5 h-3.5" /> Add
+            </button>
+          </form>
+        )}
       </div>
 
       {/* Shared group items */}
