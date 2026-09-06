@@ -75,6 +75,37 @@ async function init() {
   `;
   await sql`ALTER TABLE todos ADD COLUMN IF NOT EXISTS assignee TEXT;`;
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS packing_items (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      provided BOOLEAN DEFAULT false,
+      personal BOOLEAN DEFAULT false,
+      packed BOOLEAN DEFAULT false,
+      username TEXT,
+      assignee TEXT
+    );
+  `;
+  await sql`ALTER TABLE packing_items ADD COLUMN IF NOT EXISTS personal BOOLEAN DEFAULT false;`;
+
+  // Seed the campground-provided items if none exist yet
+  const providedCount = await sql`SELECT count(*) FROM packing_items WHERE provided = true`;
+  if (parseInt(providedCount[0].count) === 0) {
+    console.log("Seeding provided packing items...");
+    const providedItems = [
+      'Beds & mattresses',
+      'Firewood',
+      'Fire pit & grill grate',
+      'Picnic tables',
+      'Drinking water',
+      'Restrooms & showers',
+    ];
+    for (const name of providedItems) {
+      await sql`INSERT INTO packing_items (id, name, provided, packed)
+                VALUES (${Math.random().toString(36).substring(7)}, ${name}, true, false)`;
+    }
+  }
+
   // Seed cabins 9–14 if table is empty
   const cabinCount = await sql`SELECT count(*) FROM cabins`;
   if (parseInt(cabinCount[0].count) === 0) {

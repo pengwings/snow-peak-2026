@@ -44,6 +44,16 @@ export type Todo = {
   assignee: string | null;
 };
 
+export type PackingItem = {
+  id: string;
+  name: string;
+  provided: boolean;
+  personal: boolean;
+  packed: boolean;
+  user: string | null;
+  assignee: string | null;
+};
+
 import { sql } from './db-client';
 
 export const db = {
@@ -151,5 +161,30 @@ export const db = {
   },
   async removeTodo(todoId: string) {
     await sql`DELETE FROM todos WHERE id = ${todoId}`;
+  },
+
+  async getPackingItems(): Promise<PackingItem[]> {
+    const rows = await sql`SELECT * FROM packing_items ORDER BY lower(name)`;
+    return rows.map((r: any) => ({
+      id: r.id,
+      name: r.name,
+      provided: r.provided,
+      personal: r.personal ?? false,
+      packed: r.packed,
+      user: r.username ?? null,
+      assignee: r.assignee ?? null,
+    }));
+  },
+  async addPackingItem(item: PackingItem) {
+    await sql`INSERT INTO packing_items (id, name, provided, personal, packed, username, assignee)
+              VALUES (${item.id}, ${item.name}, ${item.provided}, ${item.personal}, ${item.packed}, ${item.user}, ${item.assignee})`;
+  },
+  async updatePackingItem(item: PackingItem) {
+    await sql`UPDATE packing_items
+              SET name = ${item.name}, packed = ${item.packed}, assignee = ${item.assignee}
+              WHERE id = ${item.id}`;
+  },
+  async removePackingItem(itemId: string) {
+    await sql`DELETE FROM packing_items WHERE id = ${itemId}`;
   }
 };

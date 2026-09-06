@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Home, HomeIcon as Cabin, Plane, ShoppingCart, Activity, CheckSquare } from 'lucide-react';
+import { Home, HomeIcon as Cabin, Plane, ShoppingCart, Activity, CheckSquare, Luggage } from 'lucide-react';
 import { displayName } from '@/lib/displayName';
 
 export default function Navbar() {
@@ -34,6 +34,7 @@ export default function Navbar() {
     { href: '/expenses', label: 'Expenses', icon: ShoppingCart },
     { href: '/activities', label: 'Activities', icon: Activity },
     { href: '/todos', label: 'Todos', icon: CheckSquare },
+    { href: '/packing', label: 'Packing', icon: Luggage },
   ];
 
   return (
