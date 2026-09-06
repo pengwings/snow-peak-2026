@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ScheduleItem } from '@/lib/db';
-import { X } from 'lucide-react';
+import { X, Pencil, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 // The trip runs September 10–13, 2026
@@ -77,6 +77,31 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
   const [error, setError] = useState('');
   // Clicked event rises above any block overlapping it
   const [frontId, setFrontId] = useState<string | null>(null);
+  // Event whose details popout is open, anchored beside the clicked block
+  const [selected, setSelected] = useState<{ item: ScheduleItem; x: number; y: number } | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  const POPOUT_W = 320;
+  const POPOUT_H = 220; // estimate for clamping only
+
+  const openPopout = (item: ScheduleItem, e: React.MouseEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    // Prefer the right side of the block; fall back to the left, clamped to the viewport
+    let x = rect.right + 8;
+    if (x + POPOUT_W > window.innerWidth - 8) x = rect.left - POPOUT_W - 8;
+    x = Math.max(8, Math.min(x, window.innerWidth - POPOUT_W - 8));
+    const y = Math.max(8, Math.min(rect.top, window.innerHeight - POPOUT_H - 8));
+    setSelected({ item, x, y });
+  };
+
+  // The popout is pinned to the viewport, so close it as soon as anything scrolls
+  // (capture phase also catches the calendar's own horizontal scroll)
+  useEffect(() => {
+    if (!selected) return;
+    const close = () => setSelected(null);
+    window.addEventListener('scroll', close, true);
+    return () => window.removeEventListener('scroll', close, true);
+  }, [selected]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [day, setDay] = useState(TRIP_DAYS[0]);
@@ -141,6 +166,7 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
     setTitle(item.title);
     setDescription(item.description);
     setError('');
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
 
   const handleDelete = async (id: string) => {
@@ -150,6 +176,7 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
       body: JSON.stringify({ action: 'delete', id }),
     });
     if (editingId === id) resetForm();
+    if (selected?.item.id === id) setSelected(null);
     fetchItems();
   };
 
@@ -188,7 +215,7 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
   return (
     <div>
       {isAdmin && (
-        <div className="mb-6 p-5" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+        <div ref={formRef} className="mb-6 p-5" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
           <h2 className="text-sm font-medium uppercase tracking-wider mb-3" style={{ color: 'var(--muted)' }}>
             {editingId ? 'Edit Schedule Item' : 'Add to Schedule'}
           </h2>
@@ -305,10 +332,10 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
                   {allDay.filter((i) => i.day === d).map((item) => (
                     <div
                       key={item.id}
-                      className={`group relative px-2 py-1 text-xs ${isAdmin ? 'cursor-pointer' : ''}`}
+                      className="group relative px-2 py-1 text-xs cursor-pointer"
                       style={eventBlockStyle}
                       title={item.description || item.title}
-                      onClick={() => isAdmin && handleEdit(item)}
+                      onClick={(e) => openPopout(item, e)}
                     >
                       <span className="font-medium">{item.title}</span>
                       {isAdmin && (
@@ -367,7 +394,7 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
                       ...(frontId === item.id && { zIndex: 10, boxShadow: '0 1px 5px rgba(0, 0, 0, 0.3)' }),
                     }}
                     title={`${formatTime(item.time)}${item.endTime ? `–${formatTime(item.endTime)}` : ''} ${item.title}${item.description ? ` — ${item.description}` : ''}`}
-                    onClick={(e) => { e.stopPropagation(); setFrontId(item.id); if (isAdmin) handleEdit(item); }}
+                    onClick={(e) => { e.stopPropagation(); setFrontId(item.id); openPopout(item, e); }}
                   >
                     <div className="font-medium truncate">{item.title}</div>
                     <div className="text-[10px]" style={{ color: '#5a5248' }}>
@@ -397,6 +424,67 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
         <p className="mt-4 text-xs text-center" style={{ color: 'var(--muted)' }}>
           Only a trip admin can change the schedule.
         </p>
+      )}
+
+      {/* Event details popout, anchored beside the clicked block */}
+      {selected && (
+        <>
+          {/* Invisible click-catcher: clicking anywhere else closes the popout */}
+          <div className="fixed inset-0 z-40" onClick={() => setSelected(null)} />
+          <div
+            className="fixed z-50 p-5"
+            style={{
+              left: selected.x,
+              top: selected.y,
+              width: POPOUT_W,
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.18)',
+            }}
+          >
+            <button
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-700"
+              onClick={() => setSelected(null)}
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <h3 className="text-2xl font-normal mb-1 pr-6" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>
+              {selected.item.title}
+            </h3>
+            <p className="text-xs uppercase tracking-wider mb-3" style={{ color: 'var(--muted)' }}>
+              {format(parseISO(selected.item.day), 'EEEE, MMMM d')}
+              {' · '}
+              {selected.item.time
+                ? `${formatTime(selected.item.time)}${selected.item.endTime ? ` – ${formatTime(selected.item.endTime)}` : ''}`
+                : 'All day'}
+            </p>
+            <div className="w-8 h-px mb-3" style={{ background: 'var(--border)' }} />
+            <p className="text-sm mb-1" style={{ color: selected.item.description ? 'var(--foreground)' : 'var(--muted)' }}>
+              {selected.item.description || <em>No details added.</em>}
+            </p>
+
+            {isAdmin && (
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => { handleEdit(selected.item); setSelected(null); }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs tracking-widest uppercase"
+                  style={{ background: 'var(--accent)', color: '#f5f0e8' }}
+                >
+                  <Pencil className="w-3.5 h-3.5" /> Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(selected.item.id)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs tracking-widest uppercase text-red-700 hover:bg-red-50"
+                  style={{ border: '1px solid var(--border)' }}
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                </button>
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
