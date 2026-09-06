@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { ScheduleItem } from '@/lib/db';
-import { useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
@@ -73,10 +72,8 @@ function layoutDay(events: ScheduleItem[], gridStartMin: number): Positioned[] {
   return result;
 }
 
-export default function SchedulePage() {
+export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
   const [items, setItems] = useState<ScheduleItem[]>([]);
-  const [user, setUser] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState('');
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -86,29 +83,16 @@ export default function SchedulePage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
 
-  const router = useRouter();
-
   const fetchItems = async () => {
     const res = await fetch('/api/schedule');
     setItems(await res.json());
   };
 
   useEffect(() => {
-    fetch('/api/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.user) {
-          router.push('/login');
-        } else {
-          setUser(data.user);
-          setIsAdmin(data.isAdmin);
-        }
-      });
-
     fetch('/api/schedule')
       .then((res) => res.json())
       .then(setItems);
-  }, [router]);
+  }, []);
 
   const resetForm = () => {
     setEditingId(null);
@@ -178,8 +162,6 @@ export default function SchedulePage() {
     setEndTime('');
   };
 
-  if (!user) return <div className="p-8">Loading...</div>;
-
   const timed = items.filter((i) => i.time && TRIP_DAYS.includes(i.day));
   const allDay = items.filter((i) => !i.time && TRIP_DAYS.includes(i.day));
 
@@ -202,11 +184,7 @@ export default function SchedulePage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-12">
-      <h1 className="text-4xl font-normal mb-2" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Trip Schedule</h1>
-      <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>September 10–13, 2026</p>
-      <div className="w-8 h-px mb-6" style={{ background: 'var(--border)' }} />
-
+    <div>
       {isAdmin && (
         <div className="mb-6 p-5" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
           <h2 className="text-sm font-medium uppercase tracking-wider mb-3" style={{ color: 'var(--muted)' }}>

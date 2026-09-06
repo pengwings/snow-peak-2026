@@ -4,42 +4,11 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { displayName } from '@/lib/displayName';
-
-const itinerary = [
-  {
-    day: 'Thursday',
-    date: '9/10/2026',
-    items: [
-      { time: '6:00 PM', description: 'Dinner in Seattle' }
-    ]
-  },
-  {
-    day: 'Friday',
-    date: '9/11/2026',
-    items: [
-      { time: '8:00 AM', description: 'Meet at Mark\'s apartment' },
-      { time: '12:00 PM', description: 'Arrive at Snow Peak Campground' }
-    ]
-  },
-  {
-    day: 'Saturday',
-    date: '9/12/2026',
-    items: [
-      { time: 'TBD', description: '' }
-    ]
-  },
-  {
-    day: 'Sunday',
-    date: '9/13/2026',
-    items: [
-      { time: '9:00 AM', description: 'Leave Snow Peak Campground' },
-      { time: '1:00 PM', description: 'Arrive at Seattle-Tacoma Airport' }
-    ]
-  }
-];
+import Itinerary from '@/components/Itinerary';
 
 export default function Home() {
   const [user, setUser] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -50,6 +19,7 @@ export default function Home() {
           router.push('/login');
         } else {
           setUser(data.user);
+          setIsAdmin(data.isAdmin);
         }
       });
   }, [router]);
@@ -85,41 +55,12 @@ export default function Home() {
       </div>
 
       {/* Itinerary */}
-      <div className="max-w-2xl mx-auto">
+      <div>
         <h2 className="text-3xl font-normal mb-8 text-center" style={{ fontFamily: 'EB Garamond, Georgia, serif', color: 'var(--foreground)' }}>
           Itinerary
         </h2>
 
-        <div className="space-y-8">
-          {itinerary.map((day, idx) => (
-            <div key={idx}>
-              <div className="mb-4">
-                <h3 className="text-xl font-medium" style={{ fontFamily: 'EB Garamond, Georgia, serif', color: 'var(--foreground)' }}>
-                  {day.day}
-                </h3>
-                <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--muted)' }}>
-                  {day.date}
-                </p>
-              </div>
-
-              <ul className="space-y-3 ml-4">
-                {day.items.map((item, itemIdx) => (
-                  <li key={itemIdx} className="flex items-start gap-3">
-                    <span className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0" style={{ background: 'var(--accent)' }} />
-                    <div>
-                      <span className="font-medium" style={{ color: 'var(--foreground)' }}>
-                        {item.time}
-                      </span>
-                      {item.description && (
-                        <span style={{ color: 'var(--muted)' }}> {item.description}</span>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
+        <Itinerary isAdmin={isAdmin} />
       </div>
     </div>
   );
