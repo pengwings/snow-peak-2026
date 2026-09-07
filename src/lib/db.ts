@@ -112,6 +112,21 @@ export type TriviaAnswer = {
   elapsedMs: number;
 };
 
+export type GameResult = {
+  username: string;
+  /** 1-based finishing place; players who tied share a place. */
+  place: number;
+};
+
+export type Game = {
+  id: string;
+  name: string;
+  /** 'trivia' when imported from the live trivia game, otherwise 'manual'. */
+  source: 'manual' | 'trivia';
+  playedAt: string;
+  results: GameResult[];
+};
+
 export type TriviaPhase = 'idle' | 'lobby' | 'question' | 'reveal' | 'leaderboard' | 'finished';
 
 export type TriviaGameState = {
@@ -140,6 +155,8 @@ type TriviaFactsRow = { username: string; hobby: string | null; self_facts: unkn
 type TriviaQuestionRow = { id: string; position: number | null; text: string; options: unknown; correct_index: number | null; about: string | null };
 type TriviaAnswerRow = { question_id: string; username: string; choice: number; elapsed_ms: number };
 type TriviaPlayerRow = { username: string };
+type GameRow = { id: string; name: string; source: string | null; played_at: Date | string | null };
+type GameResultRow = { game_id: string; username: string; place: number };
 
 const TRIVIA_GAME_KEY = 'trivia_game';
 const TRIVIA_FACTS_OPEN_KEY = 'trivia_facts_open';
@@ -492,6 +509,50 @@ export const db = {
   },
   async clearTriviaPlayers() {
     await sql`DELETE FROM trivia_players`;
+  },
+
+  // ---- Rankings: games and finishing places ----
+  async getGames(): Promise<Game[]> {
+    const [gameRows, resultRows] = await Promise.all([
+      sql<GameRow>`SELECT * FROM games ORDER BY played_at, id`,
+      sql<GameResultRow>`SELECT * FROM game_results ORDER BY place, lower(username)`,
+    ]);
+    const byGame = new Map<string, GameResult[]>();
+    for (const r of resultRows) {
+      const list = byGame.get(r.game_id) ?? [];
+      list.push({ username: r.username, place: r.place });
+      byGame.set(r.game_id, list);
+    }
+    return gameRows.map((r: GameRow) => ({
+      id: r.id,
+      name: r.name,
+      source: r.source === 'trivia' ? 'trivia' : 'manual',
+      playedAt: r.played_at instanceof Date ? r.played_at.toISOString() : (r.played_at ?? new Date().toISOString()),
+      results: byGame.get(r.id) ?? [],
+    }));
+  },
+  async addGame(game: Omit<Game, 'playedAt'> & { playedAt?: string }) {
+    if (game.playedAt) {
+      await sql`INSERT INTO games (id, name, source, played_at) VALUES (${game.id}, ${game.name}, ${game.source}, ${game.playedAt}::timestamptz)`;
+    } else {
+      await sql`INSERT INTO games (id, name, source) VALUES (${game.id}, ${game.name}, ${game.source})`;
+    }
+    await this.setGameResults(game.id, game.results);
+  },
+  async updateGame(id: string, name: string, results: GameResult[]) {
+    await sql`UPDATE games SET name = ${name} WHERE id = ${id}`;
+    await this.setGameResults(id, results);
+  },
+  async setGameResults(gameId: string, results: GameResult[]) {
+    await sql`DELETE FROM game_results WHERE game_id = ${gameId}`;
+    for (const r of results) {
+      await sql`INSERT INTO game_results (game_id, username, place) VALUES (${gameId}, ${r.username}, ${r.place})
+                ON CONFLICT (game_id, username) DO UPDATE SET place = EXCLUDED.place`;
+    }
+  },
+  async removeGame(id: string) {
+    await sql`DELETE FROM game_results WHERE game_id = ${id}`;
+    await sql`DELETE FROM games WHERE id = ${id}`;
   },
 };
 

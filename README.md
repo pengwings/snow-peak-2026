@@ -14,6 +14,7 @@ A full-stack, nature-inspired web application built with [Next.js](https://nextj
 - **Trip Schedule**: Day-by-day itinerary visible to everyone, editable only by trip admins.
 - **Expense Tracking**: Shared and individual expense tracking across the group.
 - **Todo Lists**: Shared actionable todo lists for pre-trip and trip responsibilities.
+- **Grand Prix Rankings**: Every game played on the trip earns Mario Kart style points by finishing place; a standings tab tracks the season, and a finished trivia game can be recorded with one tap.
 - **Nature-Inspired Aesthetic**: Minimal, clean UI styled with Tailwind CSS.
 
 ## Tech Stack

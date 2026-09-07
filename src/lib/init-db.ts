@@ -182,6 +182,25 @@ async function init() {
     );
   `;
 
+  // Rankings: each game played on the trip and everyone's finishing place in
+  // it. Points are derived from the place (see rankingsConfig.ts), not stored.
+  await sql`
+    CREATE TABLE IF NOT EXISTS games (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'manual',
+      played_at TIMESTAMPTZ DEFAULT now()
+    );
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS game_results (
+      game_id TEXT NOT NULL,
+      username TEXT NOT NULL,
+      place INTEGER NOT NULL,
+      PRIMARY KEY (game_id, username)
+    );
+  `;
+
   // Seed the campground-provided items if none exist yet
   const providedCount = await sql<{ count: string }>`SELECT count(*) FROM packing_items WHERE provided = true`;
   if (parseInt(providedCount[0].count) === 0) {

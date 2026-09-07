@@ -55,6 +55,22 @@ export default function TriviaHostPage() {
 
   const act = (action: Action) => send({ action });
 
+  /** Copies the final standings into the Grand Prix rankings as a game. */
+  const recordToRankings = async () => {
+    const name = window.prompt('Name for this game in the rankings:', 'Trivia');
+    if (name === null) return;
+    setBusy(true);
+    setMessage(null);
+    const res = await fetch('/api/rankings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'importTrivia', name }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setMessage(res.ok ? `Recorded “${name}” in the rankings.` : data.error || 'Could not record the results.');
+    setBusy(false);
+  };
+
   if (!me || !state) return <div className="p-8" style={{ color: 'var(--muted)' }}>Loading…</div>;
 
   if (!me.isAdmin) {
@@ -115,7 +131,10 @@ export default function TriviaHostPage() {
   } else if (state.phase === 'leaderboard') {
     controls = [button(isLast ? 'Finish game' : 'Next question', () => act('next'), true)];
   } else if (state.phase === 'finished') {
-    controls = [button('Clear & start over', confirmThen('Clear all answers and return to the fact-collection screen?', 'reset'), false, true)];
+    controls = [
+      button('Record to rankings', recordToRankings, true),
+      button('Clear & start over', confirmThen('Clear all answers and return to the fact-collection screen?', 'reset'), false, true),
+    ];
   }
 
   return (
@@ -168,7 +187,12 @@ export default function TriviaHostPage() {
           </p>
         )}
         <div className="flex flex-wrap gap-2 mt-5">{controls}</div>
-        {message && <p className="text-sm mt-3" style={{ color: WRONG }}>{message}</p>}
+        {message && <p className="text-sm mt-3" style={{ color: message.startsWith('Recorded') ? CORRECT : WRONG }}>{message}</p>}
+        {state.phase === 'finished' && (
+          <p className="text-xs mt-3" style={{ color: 'var(--muted)' }}>
+            Recording adds these standings to the <Link href="/rankings" className="underline">Rankings</Link> tab as a game. Clearing afterwards won&apos;t remove it.
+          </p>
+        )}
       </Panel>
 
       {/* Current question with the answer, for the host's eyes */}

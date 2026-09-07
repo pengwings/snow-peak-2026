@@ -2,8 +2,49 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { HomeIcon as Cabin, Plane, ShoppingCart, Activity, MapPin, ChefHat, CheckSquare, Luggage, Trophy, Eye } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import {
+  HomeIcon as Cabin, Plane, ShoppingCart, Activity, MapPin, ChefHat, CheckSquare, Luggage, CircleHelp, Medal, Eye,
+  Tent, ClipboardList, Gamepad2, ChevronDown,
+} from 'lucide-react';
+
+type NavLink = { href: string; label: string; icon: typeof Plane };
+type NavGroup = { key: string; label: string; icon: typeof Plane; links: NavLink[] };
+
+/** Tabs grouped into three menus: getting there and settled, what we'll do, and the games. */
+const NAV_GROUPS: NavGroup[] = [
+  {
+    key: 'trip',
+    label: 'Trip',
+    icon: Tent,
+    links: [
+      { href: '/flights', label: 'Flights', icon: Plane },
+      { href: '/cabins', label: 'Cabins', icon: Cabin },
+      { href: '/packing', label: 'Packing', icon: Luggage },
+      { href: '/expenses', label: 'Expenses', icon: ShoppingCart },
+    ],
+  },
+  {
+    key: 'plan',
+    label: 'Plan',
+    icon: ClipboardList,
+    links: [
+      { href: '/activities', label: 'Activities', icon: Activity },
+      { href: '/food', label: 'Food', icon: ChefHat },
+      { href: '/todos', label: 'Todos', icon: CheckSquare },
+      { href: '/map', label: 'Map', icon: MapPin },
+    ],
+  },
+  {
+    key: 'games',
+    label: 'Games',
+    icon: Gamepad2,
+    links: [
+      { href: '/trivia', label: 'Trivia', icon: CircleHelp },
+      { href: '/rankings', label: 'Rankings', icon: Medal },
+    ],
+  },
+];
 import { displayName } from '@/lib/displayName';
 
 export default function Navbar() {
@@ -14,6 +55,25 @@ export default function Navbar() {
   const [realAdmin, setRealAdmin] = useState(false);
   const [viewer, setViewer] = useState(false);
   const [hiddenTabs, setHiddenTabs] = useState<string[]>([]);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const navRef = useRef<HTMLElement>(null);
+
+  // Menus close when a link is picked, on a click anywhere else, and on Escape.
+  useEffect(() => {
+    if (!openGroup) return;
+    const onPointer = (e: MouseEvent | TouchEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) setOpenGroup(null);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenGroup(null); };
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('touchstart', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('touchstart', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [openGroup]);
 
   useEffect(() => {
     fetch('/api/me')
@@ -69,50 +129,71 @@ export default function Navbar() {
     }
   };
 
-  const navLinks = [
-    { href: '/cabins', label: 'Cabins', icon: Cabin },
-    { href: '/flights', label: 'Flights', icon: Plane },
-    { href: '/expenses', label: 'Expenses', icon: ShoppingCart },
-    { href: '/activities', label: 'Activities', icon: Activity },
-    { href: '/map', label: 'Map', icon: MapPin },
-    { href: '/food', label: 'Food', icon: ChefHat },
-    { href: '/todos', label: 'Todos', icon: CheckSquare },
-    { href: '/packing', label: 'Packing', icon: Luggage },
-    { href: '/trivia', label: 'Trivia', icon: Trophy },
-  ];
-
   // Admins in admin mode see every tab (hidden ones dimmed); everyone else
-  // only sees visible tabs. Visibility is toggled from each page's header.
-  const visibleLinks = isAdmin ? navLinks : navLinks.filter((link) => !hiddenTabs.includes(link.href));
+  // only sees visible tabs, and a group with nothing visible disappears.
+  // Visibility is toggled from each page's header.
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
+  const groups = NAV_GROUPS
+    .map((g) => ({ ...g, links: isAdmin ? g.links : g.links.filter((l) => !hiddenTabs.includes(l.href)) }))
+    .filter((g) => g.links.length > 0);
 
-  const renderLink = (link: (typeof navLinks)[number], mobile: boolean) => {
-    const Icon = link.icon;
-    const isActive = pathname === link.href || pathname.startsWith(link.href + '/');
-    const isHidden = hiddenTabs.includes(link.href);
+  const renderGroup = (group: NavGroup, mobile: boolean) => {
+    const Icon = group.icon;
+    const active = group.links.some((l) => isActive(l.href));
+    const open = openGroup === group.key;
+    const current = group.links.find((l) => isActive(l.href));
     return (
-      <Link
-        key={link.href}
-        href={link.href}
-        className={
-          mobile
-            ? `whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium tracking-wide uppercase transition-colors ${
-                isActive ? 'bg-[#e0d8c8] text-[#1a1a1a]' : 'text-[#6a6258] hover:bg-[#ede7dc]'
-              }`
-            : `inline-flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium tracking-wide uppercase rounded transition-colors ${
-                isActive ? 'bg-[#e8e0d0] text-[#1a1a1a]' : 'text-[#5a5248] hover:bg-[#ede7dc] hover:text-[#1a1a1a]'
-              }`
-        }
-        style={isAdmin && isHidden ? { opacity: 0.45 } : undefined}
-        title={isAdmin && isHidden ? 'Hidden from members' : undefined}
-      >
-        <Icon className="w-3.5 h-3.5" />
-        {link.label}
-      </Link>
+      <div key={group.key} className="relative">
+        <button
+          type="button"
+          onClick={() => setOpenGroup(open ? null : group.key)}
+          aria-expanded={open}
+          aria-haspopup="menu"
+          className={`flex items-center gap-1.5 rounded text-xs font-medium tracking-wide uppercase transition-colors whitespace-nowrap ${
+            mobile ? 'px-3 py-1.5' : 'px-2.5 py-1.5'
+          } ${active || open ? 'bg-[#e8e0d0] text-[#1a1a1a]' : 'text-[#5a5248] hover:bg-[#ede7dc] hover:text-[#1a1a1a]'}`}
+        >
+          <Icon className="w-3.5 h-3.5" />
+          {group.label}
+          {/* On phones the chip names the page you're on, so the row doubles as a breadcrumb */}
+          {mobile && current && <span className="normal-case font-normal" style={{ color: 'var(--muted)' }}>· {current.label}</span>}
+          <ChevronDown className="w-3 h-3 transition-transform" style={{ transform: open ? 'rotate(180deg)' : 'none', opacity: 0.6 }} />
+        </button>
+        {open && (
+          <div
+            role="menu"
+            className="absolute left-0 top-full mt-1 min-w-[11rem] py-1 z-50"
+            style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 6px 20px rgba(40, 30, 20, 0.12)' }}
+          >
+            {group.links.map((link) => {
+              const LinkIcon = link.icon;
+              const isHidden = hiddenTabs.includes(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  role="menuitem"
+                  onClick={() => setOpenGroup(null)}
+                  className={`flex items-center gap-2.5 px-3 py-2 text-xs font-medium tracking-wide uppercase transition-colors ${
+                    isActive(link.href) ? 'bg-[#e8e0d0] text-[#1a1a1a]' : 'text-[#5a5248] hover:bg-[#ede7dc] hover:text-[#1a1a1a]'
+                  }`}
+                  style={isAdmin && isHidden ? { opacity: 0.45 } : undefined}
+                  title={isAdmin && isHidden ? 'Hidden from members' : undefined}
+                >
+                  <LinkIcon className="w-3.5 h-3.5" />
+                  {link.label}
+                  {isAdmin && isHidden && <span className="ml-auto text-[10px] normal-case font-normal">hidden</span>}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
     );
   };
 
   return (
-    <nav className="sticky top-0 z-50" style={{ borderBottom: '1px solid var(--border)', background: 'var(--card)' }}>
+    <nav ref={navRef} className="sticky top-0 z-50" style={{ borderBottom: '1px solid var(--border)', background: 'var(--card)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-14 items-center">
 
@@ -126,9 +207,9 @@ export default function Navbar() {
               Snow Peak 2026
             </Link>
 
-            {/* Desktop links */}
-            <div className="hidden xl:flex xl:gap-1 xl:items-center">
-              {visibleLinks.map((link) => renderLink(link, false))}
+            {/* Desktop menus */}
+            <div className="hidden md:flex md:gap-1 md:items-center">
+              {groups.map((group) => renderGroup(group, false))}
             </div>
           </div>
 
@@ -197,10 +278,10 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile scrollable nav */}
-      <div className="xl:hidden overflow-x-auto" style={{ borderTop: '1px solid var(--border)', background: 'var(--card)' }}>
-        <div className="flex gap-1 px-2 py-2 items-center">
-          {visibleLinks.map((link) => renderLink(link, true))}
+      {/* Phone: the three group chips in a second row; each opens its menu below */}
+      <div className="md:hidden" style={{ borderTop: '1px solid var(--border)', background: 'var(--card)' }}>
+        <div className="flex gap-1 px-2 py-2 items-center overflow-x-auto">
+          {groups.map((group) => renderGroup(group, true))}
         </div>
       </div>
     </nav>

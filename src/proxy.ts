@@ -27,5 +27,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/cabins', '/flights', '/expenses', '/activities', '/todos', '/packing', '/trivia', '/trivia/:path*'],
+  matcher: ['/cabins', '/flights', '/expenses', '/activities', '/todos', '/packing', '/trivia', '/trivia/:path*', '/rankings'],
 };
