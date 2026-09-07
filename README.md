@@ -5,6 +5,7 @@ A full-stack, nature-inspired web application built with [Next.js](https://nextj
 ## Features
 
 - **Guest Sessions & User Accounts**: Start planning immediately as a guest; data migrates to your account on sign-up.
+- **View-Only Mode**: Anyone can browse every tab without an account. Editing controls appear once you sign in with a name on the guest list.
 - **Flight Coordination**: Track arrival/departure details for all trip members.
 - **Cabin & Lodging Management**: Assign and manage cabin assignments with ranking.
 - **Activity Planning**: Collaborative itinerary and activity planning.

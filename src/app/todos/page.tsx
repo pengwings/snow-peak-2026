@@ -2,31 +2,20 @@
 
 import { useState, useEffect } from 'react';
 import { Todo } from '@/lib/db';
-import { useRouter } from 'next/navigation';
 import { Trash2, CheckCircle, Circle } from 'lucide-react';
 import { displayName } from '@/lib/displayName';
+import { useSession } from '@/lib/useSession';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
+import SignInHint from '@/components/SignInHint';
 
 export default function TodosPage() {
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [user, setUser] = useState<string | null>(null);
+  const { user, ready } = useSession();
   const [users, setUsers] = useState<string[]>([]);
   const [newText, setNewText] = useState('');
   const [newAssignee, setNewAssignee] = useState('');
 
-  const router = useRouter();
-
   useEffect(() => {
-    fetch('/api/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.user) {
-          router.push('/login');
-        } else {
-          setUser(data.user);
-        }
-      });
-
     fetch('/api/todos')
       .then((res) => res.json())
       .then(setTodos);
@@ -35,7 +24,7 @@ export default function TodosPage() {
       .then((r) => r.json())
       .then((data: { name: string }[]) => setUsers(data.map((u) => u.name)))
       .catch(() => {}); // non-fatal
-  }, [router]);
+  }, []);
 
   const fetchTodos = async () => {
     const res = await fetch('/api/todos');
@@ -89,7 +78,10 @@ export default function TodosPage() {
     fetchTodos();
   };
 
-  if (!user) return <div className="p-8">Loading...</div>;
+  if (!ready) return <div className="p-8">Loading...</div>;
+
+  // View-only visitors can read the list but not add, complete, assign, or delete.
+  const canEdit = user !== null;
 
   const pending = todos.filter((t) => !t.completed);
   const completed = todos.filter((t) => t.completed);
@@ -102,6 +94,8 @@ export default function TodosPage() {
       </div>
       <div className="w-8 h-px mb-6" style={{ background: 'var(--border)' }} />
 
+      {!canEdit && <SignInHint panel className="mb-6" action="add or check off tasks" />}
+      {canEdit && (
       <div className="mb-6 p-5" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
         <h2 className="text-sm font-medium uppercase tracking-wider mb-3" style={{ color: 'var(--muted)' }}>Add a Task</h2>
         <form onSubmit={handleAdd} className="space-y-3">
@@ -138,6 +132,7 @@ export default function TodosPage() {
           </div>
         </form>
       </div>
+      )}
 
       <div className="mb-6 overflow-hidden" style={{ border: '1px solid var(--border)' }}>
         <div className="px-4 py-3 border-b bg-gray-50">
@@ -149,14 +144,14 @@ export default function TodosPage() {
           <ul className="divide-y divide-gray-200">
             {pending.map((todo) => (
               <li key={todo.id} className="p-4 flex items-center gap-4 hover:bg-gray-50 transition">
-                <button onClick={() => toggleComplete(todo)} className="text-gray-400 hover:text-blue-600 shrink-0">
+                <button onClick={() => toggleComplete(todo)} disabled={!canEdit} className={canEdit ? 'text-gray-400 hover:text-blue-600 shrink-0' : 'text-gray-400 shrink-0'}>
                   <Circle className="w-6 h-6" />
                 </button>
                 <div className="flex flex-col flex-1 min-w-0">
                   <span className="text-gray-900 truncate">{todo.text}</span>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs text-gray-400">Added by {displayName(todo.user)}</span>
-                    {users.length > 0 ? (
+                    {canEdit && users.length > 0 ? (
                       <>
                         <span className="text-xs" style={{ color: 'var(--muted)' }}>Assign to:</span>
                         <select
@@ -175,13 +170,15 @@ export default function TodosPage() {
                     ) : null}
                   </div>
                 </div>
-                <button
-                  onClick={() => handleDelete(todo.id)}
-                  className="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition shrink-0"
-                  title="Delete"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {canEdit && (
+                  <button
+                    onClick={() => handleDelete(todo.id)}
+                    className="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition shrink-0"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -197,7 +194,7 @@ export default function TodosPage() {
           <ul className="divide-y divide-gray-100">
             {completed.map((todo) => (
               <li key={todo.id} className="p-4 flex items-center gap-4 hover:bg-gray-50 transition">
-                <button onClick={() => toggleComplete(todo)} className="text-green-500 shrink-0">
+                <button onClick={() => toggleComplete(todo)} disabled={!canEdit} className="text-green-500 shrink-0">
                   <CheckCircle className="w-6 h-6" />
                 </button>
                 <div className="flex flex-col flex-1 min-w-0">
@@ -206,12 +203,14 @@ export default function TodosPage() {
                     <span className="text-xs text-gray-400">→ {displayName(todo.assignee)}</span>
                   )}
                 </div>
-                <button
-                  onClick={() => handleDelete(todo.id)}
-                  className="text-red-300 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition shrink-0"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {canEdit && (
+                  <button
+                    onClick={() => handleDelete(todo.id)}
+                    className="text-red-300 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </li>
             ))}
           </ul>

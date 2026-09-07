@@ -31,6 +31,16 @@ export default function Login() {
     router.refresh();
   };
 
+  const handleViewOnly = async () => {
+    await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ viewOnly: true }),
+    });
+    router.push('/');
+    router.refresh();
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--background)' }}>
       <div className="w-full max-w-sm px-8 py-12 text-center" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
@@ -82,6 +92,28 @@ export default function Login() {
             Enter
           </button>
         </form>
+
+        <div className="mt-8 pt-6" style={{ borderTop: '1px solid var(--border)' }}>
+          <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>
+            Just looking? You can browse everything without an account.
+          </p>
+          <button
+            type="button"
+            onClick={handleViewOnly}
+            className="w-full py-2.5 text-sm tracking-widest uppercase transition-colors"
+            style={{ color: 'var(--muted)', border: '1px solid var(--border)', background: 'transparent' }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.background = 'var(--border)';
+              (e.currentTarget as HTMLElement).style.color = 'var(--foreground)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.background = 'transparent';
+              (e.currentTarget as HTMLElement).style.color = 'var(--muted)';
+            }}
+          >
+            Browse in view-only mode
+          </button>
+        </div>
       </div>
     </div>
   );

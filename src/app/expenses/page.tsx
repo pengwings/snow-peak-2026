@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { Expense } from '@/lib/db';
-import { useRouter } from 'next/navigation';
 import { displayName } from '@/lib/displayName';
+import { useSession } from '@/lib/useSession';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
+import SignInHint from '@/components/SignInHint';
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [user, setUser] = useState<string | null>(null);
+  const { user, ready } = useSession();
   const [users, setUsers] = useState<string[]>([]);
   const [editingExpense, setEditingExpense] = useState<Record<string, { name?: string; buyer?: string; amountPaid?: string }>>({});
   const [newExpenseName, setNewExpenseName] = useState('');
@@ -18,8 +19,6 @@ export default function ExpensesPage() {
   const [editingSplitId, setEditingSplitId] = useState<string | null>(null);
   const [splitDraft, setSplitDraft] = useState<string[]>([]);
 
-  const router = useRouter();
-
   const fetchExpenses = async () => {
     const res = await fetch('/api/expenses');
     const data = await res.json();
@@ -27,16 +26,6 @@ export default function ExpensesPage() {
   };
 
   useEffect(() => {
-    fetch('/api/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.user) {
-          router.push('/login');
-        } else {
-          setUser(data.user);
-        }
-      });
-
     fetch('/api/expenses')
       .then((res) => res.json())
       .then(setExpenses);
@@ -48,7 +37,7 @@ export default function ExpensesPage() {
         setUsers(names);
         setNewExpenseParticipants(names);
       });
-  }, [router]);
+  }, []);
 
   const handleUpdate = async (expenseId: string, field: 'name' | 'buyer' | 'amountPaid') => {
     const value = editingExpense[expenseId]?.[field];
@@ -124,7 +113,10 @@ export default function ExpensesPage() {
   const toggleName = (list: string[], name: string) =>
     list.includes(name) ? list.filter((n) => n !== name) : [...list, name];
 
-  if (!user) return <div className="p-8" style={{ color: 'var(--muted)' }}>Loading…</div>;
+  if (!ready) return <div className="p-8" style={{ color: 'var(--muted)' }}>Loading…</div>;
+
+  // View-only visitors see every expense and balance but none of the editing affordances.
+  const canEdit = user !== null;
 
   const totalSpent = expenses.reduce((acc, curr) => acc + (curr.amountPaid || 0), 0);
 
@@ -183,6 +175,8 @@ export default function ExpensesPage() {
       <div className="w-8 h-px mb-8" style={{ background: 'var(--border)' }} />
 
       {/* Add New Expense Form */}
+      {!canEdit && <SignInHint panel className="mb-8" action="add or edit expenses" />}
+      {canEdit && (
       <div className="mb-8 p-6" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
         <h2 className="text-lg font-medium mb-4" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>
           Add New Expense
@@ -268,6 +262,7 @@ export default function ExpensesPage() {
           </button>
         </form>
       </div>
+      )}
 
       {/* Summary */}
       <div className="mb-8 px-6 py-4 flex justify-between items-center" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
@@ -285,7 +280,9 @@ export default function ExpensesPage() {
               <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Amount</th>
               <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Split</th>
               <th className="px-3 sm:px-6 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Settled</th>
-              <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Actions</th>
+              {canEdit && (
+                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Actions</th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -324,8 +321,8 @@ export default function ExpensesPage() {
                       </div>
                     ) : (
                       <span
-                        onClick={() => setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], name: expense.name } })}
-                        className="cursor-pointer hover:underline"
+                        onClick={canEdit ? () => setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], name: expense.name } }) : undefined}
+                        className={canEdit ? 'cursor-pointer hover:underline' : ''}
                       >
                         {expense.name}
                       </span>
@@ -362,10 +359,10 @@ export default function ExpensesPage() {
                       </div>
                     ) : (
                       <span
-                        onClick={() => setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], buyer: expense.buyer || '' } })}
-                        className="cursor-pointer hover:underline"
+                        onClick={canEdit ? () => setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], buyer: expense.buyer || '' } }) : undefined}
+                        className={canEdit ? 'cursor-pointer hover:underline' : ''}
                       >
-                        {expense.buyer ? displayName(expense.buyer) : <span className="italic" style={{ color: 'var(--muted)' }}>Click to add</span>}
+                        {expense.buyer ? displayName(expense.buyer) : <span className="italic" style={{ color: 'var(--muted)' }}>{canEdit ? 'Click to add' : '—'}</span>}
                       </span>
                     )}
                   </td>
@@ -400,10 +397,10 @@ export default function ExpensesPage() {
                       </div>
                     ) : (
                       <span
-                        onClick={() => setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], amountPaid: expense.amountPaid?.toString() || '' } })}
-                        className="cursor-pointer hover:underline"
+                        onClick={canEdit ? () => setEditingExpense({ ...editingExpense, [expense.id]: { ...editingExpense[expense.id], amountPaid: expense.amountPaid?.toString() || '' } }) : undefined}
+                        className={canEdit ? 'cursor-pointer hover:underline' : ''}
                       >
-                        {expense.amountPaid ? `$${expense.amountPaid.toFixed(2)}` : <span className="italic" style={{ color: 'var(--muted)' }}>Click to add</span>}
+                        {expense.amountPaid ? `$${expense.amountPaid.toFixed(2)}` : <span className="italic" style={{ color: 'var(--muted)' }}>{canEdit ? 'Click to add' : '—'}</span>}
                       </span>
                     )}
                   </td>
@@ -441,8 +438,8 @@ export default function ExpensesPage() {
                       </div>
                     ) : (
                       <span
-                        onClick={() => openSplitEditor(expense)}
-                        className="cursor-pointer hover:underline whitespace-nowrap"
+                        onClick={canEdit ? () => openSplitEditor(expense) : undefined}
+                        className={canEdit ? 'cursor-pointer hover:underline whitespace-nowrap' : 'whitespace-nowrap'}
                         title={participantsOf(expense).map(displayName).join(', ')}
                       >
                         {splitLabel(expense)}
@@ -453,20 +450,23 @@ export default function ExpensesPage() {
                     <input
                       type="checkbox"
                       checked={expense.settled}
+                      disabled={!canEdit}
                       onChange={() => handleToggleSettled(expense)}
-                      title={expense.settled ? 'Mark as unsettled' : 'Mark as settled'}
-                      className="cursor-pointer"
+                      title={!canEdit ? (expense.settled ? 'Settled' : 'Not settled') : expense.settled ? 'Mark as unsettled' : 'Mark as settled'}
+                      className={canEdit ? 'cursor-pointer' : ''}
                     />
                   </td>
-                  <td className="px-3 sm:px-6 py-4 text-sm text-right">
-                    <button
-                      onClick={() => handleDelete(expense.id, expense.name)}
-                      className="text-xs uppercase tracking-wide"
-                      style={{ color: '#a33' }}
-                    >
-                      Delete
-                    </button>
-                  </td>
+                  {canEdit && (
+                    <td className="px-3 sm:px-6 py-4 text-sm text-right">
+                      <button
+                        onClick={() => handleDelete(expense.id, expense.name)}
+                        className="text-xs uppercase tracking-wide"
+                        style={{ color: '#a33' }}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  )}
                 </tr>
               );
             })}

@@ -1,30 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import { displayName } from '@/lib/displayName';
+import { useSession } from '@/lib/useSession';
 import Itinerary from '@/components/Itinerary';
 
 export default function Home() {
-  const [user, setUser] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const router = useRouter();
+  const { user, isAdmin, ready } = useSession();
 
-  useEffect(() => {
-    fetch('/api/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.user) {
-          router.push('/login');
-        } else {
-          setUser(data.user);
-          setIsAdmin(data.isAdmin);
-        }
-      });
-  }, [router]);
-
-  if (!user) return <div className="min-h-screen p-8 flex justify-center" style={{ color: 'var(--muted)' }}>Loading…</div>;
+  if (!ready) return <div className="min-h-screen p-8 flex justify-center" style={{ color: 'var(--muted)' }}>Loading…</div>;
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-14">
@@ -38,7 +23,14 @@ export default function Home() {
         </h1>
         <div className="w-12 h-px mx-auto mb-4" style={{ background: 'var(--border)' }} />
         <p style={{ color: 'var(--muted)' }} className="text-sm mb-8">
-          Welcome, <span style={{ color: 'var(--foreground)' }} className="font-medium">{displayName(user)}</span>.
+          {user ? (
+            <>Welcome, <span style={{ color: 'var(--foreground)' }} className="font-medium">{displayName(user)}</span>.</>
+          ) : (
+            <>
+              You&apos;re browsing in view-only mode.{' '}
+              <Link href="/login" className="underline" style={{ color: 'var(--accent)' }}>Sign in</Link> to make changes.
+            </>
+          )}
         </p>
 
         {/* Campground Image */}

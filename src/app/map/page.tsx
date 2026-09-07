@@ -1,40 +1,27 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { ExternalLink, MapPin } from 'lucide-react';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
 import { myMapsEmbedUrl, myMapsViewerUrl } from '@/lib/myMaps';
+import { useSession } from '@/lib/useSession';
 
 export default function MapPage() {
-  const [user, setUser] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAdmin, ready } = useSession();
   const [mapId, setMapId] = useState<string | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [link, setLink] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.user) {
-          router.push('/login');
-        } else {
-          setUser(data.user);
-          setIsAdmin(!!data.isAdmin);
-        }
-      });
-
     fetch('/api/map')
       .then((res) => res.json())
       .then((data) => {
         setMapId(data.mapId ?? null);
         setMapLoaded(true);
       });
-  }, [router]);
+  }, []);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +54,7 @@ export default function MapPage() {
     setMapId(null);
   };
 
-  if (!user) return <div className="p-8">Loading...</div>;
+  if (!ready) return <div className="p-8">Loading...</div>;
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-12">

@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { Flight } from '@/lib/db';
-import { useRouter } from 'next/navigation';
 import { displayName } from '@/lib/displayName';
+import { useSession } from '@/lib/useSession';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
+import SignInHint from '@/components/SignInHint';
 
 function formatDateTime(dateTimeStr: string): string {
   if (!dateTimeStr) return '—';
@@ -33,8 +34,7 @@ function formatDateTime(dateTimeStr: string): string {
 
 export default function FlightsPage() {
   const [flights, setFlights] = useState<Flight[]>([]);
-  const [user, setUser] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { user, isAdmin, ready } = useSession();
   const [users, setUsers] = useState<string[]>([]);
   // Admin: which member's flight the form is editing ('' = yourself)
   const [targetUser, setTargetUser] = useState('');
@@ -47,20 +47,7 @@ export default function FlightsPage() {
   const [flightType, setFlightType] = useState<'arriving' | 'departing'>('arriving');
 
 
-  const router = useRouter();
-
   useEffect(() => {
-    fetch('/api/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.user) {
-          router.push('/login');
-        } else {
-          setUser(data.user);
-          setIsAdmin(data.isAdmin);
-        }
-      });
-
     fetch('/api/flights')
       .then((res) => res.json())
       .then(setFlights);
@@ -69,7 +56,7 @@ export default function FlightsPage() {
       .then((r) => r.json())
       .then((data: { name: string }[]) => setUsers(data.map((u) => u.name)))
       .catch(() => {}); // non-fatal
-  }, [router]);
+  }, []);
 
   const fetchFlights = async () => {
     const res = await fetch('/api/flights');
@@ -134,7 +121,7 @@ export default function FlightsPage() {
     fetchFlights();
   };
 
-  if (!user) return <div className="p-8">Loading...</div>;
+  if (!ready) return <div className="p-8">Loading...</div>;
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-12">
@@ -144,6 +131,8 @@ export default function FlightsPage() {
       </div>
       <div className="w-8 h-px mb-8" style={{ background: 'var(--border)' }} />
 
+      {!user && <SignInHint panel className="mb-8" action="add your flight" />}
+      {user && (
       <div className="mb-8 p-6" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
         <h2 className="text-lg font-medium mb-4" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>
           {isAdmin ? 'Add or Update a Flight' : 'Add or Update Your Flight'}
@@ -254,6 +243,7 @@ export default function FlightsPage() {
           </button>
         </form>
       </div>
+      )}
 
       <h2 className="text-2xl font-normal mb-6" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Everyone&apos;s Flights</h2>
 

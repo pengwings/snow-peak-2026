@@ -2,6 +2,18 @@ import { cookies } from 'next/headers';
 import { db, User } from './db';
 import { ADMIN_MODE_COOKIE, isAdminModeOn } from './adminMode';
 
+/**
+ * Set (to "1") when a visitor chooses to browse without signing in. It grants
+ * nothing beyond what unauthenticated reads already allow; it only tells the
+ * pages to render read-only instead of bouncing to the login screen.
+ */
+export const VIEWER_COOKIE = 'viewer';
+
+export async function isViewOnly(): Promise<boolean> {
+  const cookieStore = await cookies();
+  return cookieStore.get(VIEWER_COOKIE)?.value === '1';
+}
+
 export type SessionUser = User & {
   /** Actual role, regardless of admin mode — only for deciding whether to offer the toggle. */
   realAdmin: boolean;

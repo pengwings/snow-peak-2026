@@ -2,29 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { Cabin } from '@/lib/db';
-import { useRouter } from 'next/navigation';
 import { displayName } from '@/lib/displayName';
+import { useSession } from '@/lib/useSession';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
+import SignInHint from '@/components/SignInHint';
 
 export default function CabinsPage() {
   const [cabins, setCabins] = useState<Cabin[]>([]);
-  const [user, setUser] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { user, isAdmin, ready } = useSession();
   const [users, setUsers] = useState<string[]>([]);
-  const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.user) {
-          router.push('/login');
-        } else {
-          setUser(data.user);
-          setIsAdmin(data.isAdmin);
-        }
-      });
-
     fetch('/api/cabins')
       .then((res) => res.json())
       .then(setCabins);
@@ -33,7 +21,7 @@ export default function CabinsPage() {
       .then((r) => r.json())
       .then((data: { name: string }[]) => setUsers(data.map((u) => u.name)))
       .catch(() => {}); // non-fatal
-  }, [router]);
+  }, []);
 
   const fetchCabins = async () => {
     const res = await fetch('/api/cabins');
@@ -51,7 +39,10 @@ export default function CabinsPage() {
     fetchCabins();
   };
 
-  if (!user) return <div className="p-8">Loading...</div>;
+  if (!ready) return <div className="p-8">Loading...</div>;
+
+  // View-only visitors see the map and lists but can't join or leave.
+  const canEdit = user !== null;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-8 py-10">
@@ -101,7 +92,7 @@ export default function CabinsPage() {
 
         <div className="absolute inset-0 z-10 w-full h-full">
           {cabins.map((cabin) => {
-            const isOccupant = cabin.occupants.includes(user);
+            const isOccupant = user !== null && cabin.occupants.includes(user);
             const isFull = cabin.occupants.length >= cabin.capacity;
 
             // Extract cabin number to match with layout
@@ -130,12 +121,12 @@ export default function CabinsPage() {
               <div
                 key={cabin.id}
                 className={`absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center group
-                  ${selectable ? 'cursor-pointer hover:scale-105 transition-transform' : 'opacity-60 cursor-not-allowed'}
+                  ${selectable && canEdit ? 'cursor-pointer hover:scale-105 transition-transform' : selectable ? '' : 'opacity-60 cursor-not-allowed'}
                   ${isOccupant ? 'z-20 scale-105' : 'z-10'}
                 `}
                 style={{ top: layout.top, left: layout.left }}
                 onClick={() => {
-                  if (!selectable) return;
+                  if (!selectable || !canEdit) return;
                   if (isOccupant) handleAssign(null);
                   else if (!isFull) handleAssign(cabin.id);
                 }}
@@ -172,7 +163,8 @@ export default function CabinsPage() {
                       {cabin.occupants.length} / {cabin.capacity} full
                     </div>
                     <div className="text-[10px] font-bold text-center mt-0.5 uppercase tracking-wider">
-                      {isOccupant ? <span className="text-blue-600">Click to leave</span> :
+                      {!canEdit ? <span className="text-gray-500">{isFull ? 'Full' : 'Sign in to join'}</span> :
+                        isOccupant ? <span className="text-blue-600">Click to leave</span> :
                         isFull ? <span className="text-red-500">Full</span> :
                           <span className="text-green-600">Click to join</span>}
                     </div>
@@ -195,11 +187,12 @@ export default function CabinsPage() {
         </div>
       </div>
 
-      <h2 className="text-2xl font-normal mb-6" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Occupant Details</h2>
+      <h2 className="text-2xl font-normal mb-2" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Occupant Details</h2>
+      {canEdit ? <div className="mb-6" /> : <SignInHint className="mb-6" action="pick your cabin" />}
 
       <div className="grid gap-6 md:grid-cols-3">
         {cabins.map((cabin) => {
-          const isOccupant = cabin.occupants.includes(user);
+          const isOccupant = user !== null && cabin.occupants.includes(user);
           const isFull = cabin.occupants.length >= cabin.capacity;
 
           return (
@@ -237,6 +230,7 @@ export default function CabinsPage() {
                 )}
               </div>
 
+              {canEdit && (
               <div className="mt-4 pt-4 border-t space-y-2">
                 {isAdmin && !isFull && (
                   <select
@@ -272,6 +266,7 @@ export default function CabinsPage() {
                   </button>
                 )}
               </div>
+              )}
             </div>
           );
         })}

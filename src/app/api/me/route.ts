@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getSessionUser } from '@/lib/auth';
+import { getSessionUser, isViewOnly } from '@/lib/auth';
 
 export async function GET() {
   const user = await getSessionUser();
 
   if (!user) {
-    return NextResponse.json({ user: null, isAdmin: false, realAdmin: false });
+    return NextResponse.json({ user: null, isAdmin: false, realAdmin: false, viewer: await isViewOnly() });
   }
 
   // isAdmin = effective (admin + admin mode unlocked with the password);
@@ -14,5 +14,6 @@ export async function GET() {
     user: user.name,
     isAdmin: user.isAdmin,
     realAdmin: user.realAdmin,
+    viewer: false,
   });
 }

@@ -2,37 +2,24 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Activity } from '@/lib/db';
-import { useRouter } from 'next/navigation';
 import { displayName } from '@/lib/displayName';
+import { useSession } from '@/lib/useSession';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
+import SignInHint from '@/components/SignInHint';
 
 export default function ActivitiesPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [user, setUser] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { user, isAdmin, ready } = useSession();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const formRef = useRef<HTMLDivElement>(null);
 
-  const router = useRouter();
-
   useEffect(() => {
-    fetch('/api/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.user) {
-          router.push('/login');
-        } else {
-          setUser(data.user);
-          setIsAdmin(data.isAdmin);
-        }
-      });
-
     fetch('/api/activities')
       .then((res) => res.json())
       .then(setActivities);
-  }, [router]);
+  }, []);
 
   const fetchActivities = async () => {
     const res = await fetch('/api/activities');
@@ -91,7 +78,10 @@ export default function ActivitiesPage() {
     fetchActivities();
   };
 
-  if (!user) return <div className="p-8">Loading...</div>;
+  if (!ready) return <div className="p-8">Loading...</div>;
+
+  // View-only visitors can read proposals and vote counts but not propose or vote.
+  const canEdit = user !== null;
 
   const adminButtons = (activity: Activity) =>
     isAdmin && (
@@ -131,6 +121,8 @@ export default function ActivitiesPage() {
       </div>
       <div className="w-8 h-px mb-8" style={{ background: 'var(--border)' }} />
 
+      {!canEdit && <SignInHint panel className="mb-8" action="propose an activity or vote" />}
+      {canEdit && (
       <div ref={formRef} className="mb-8 p-6" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
         <h2 className="text-xl font-semibold mb-4 text-gray-900">{editingId ? 'Edit Activity' : 'Propose an Activity'}</h2>
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -168,6 +160,7 @@ export default function ActivitiesPage() {
           </div>
         </form>
       </div>
+      )}
 
       {promotedActivities.length > 0 && (
         <div className="mb-8">
@@ -219,7 +212,7 @@ export default function ActivitiesPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {proposedActivities.map((activity) => {
-              const hasVoted = activity.votes.includes(user);
+              const hasVoted = user !== null && activity.votes.includes(user);
 
               return (
                 <div key={activity.id} className="p-4" style={{ border: '1px solid var(--border)', background: 'var(--card)' }}>
@@ -234,15 +227,19 @@ export default function ActivitiesPage() {
                   )}
                   <p className="text-xs text-gray-400 mb-4">Proposed by: {displayName(activity.proposer)}</p>
 
-                  <button
-                    onClick={() => handleVote(activity.id)}
-                    className={`w-full py-2 text-sm transition ${
-                      hasVoted ? 'bg-[#dff0e8] text-[#2d6a4f]' : ''
-                    }`}
-                    style={!hasVoted ? { background: 'var(--background)', border: '1px solid var(--border)', color: 'var(--foreground)' } : { border: '1px solid #b7d8c0' }}
-                  >
-                    {hasVoted ? 'Remove Vote' : 'Upvote'}
-                  </button>
+                  {canEdit ? (
+                    <button
+                      onClick={() => handleVote(activity.id)}
+                      className={`w-full py-2 text-sm transition ${
+                        hasVoted ? 'bg-[#dff0e8] text-[#2d6a4f]' : ''
+                      }`}
+                      style={!hasVoted ? { background: 'var(--background)', border: '1px solid var(--border)', color: 'var(--foreground)' } : { border: '1px solid #b7d8c0' }}
+                    >
+                      {hasVoted ? 'Remove Vote' : 'Upvote'}
+                    </button>
+                  ) : (
+                    <SignInHint action="vote" />
+                  )}
                   {adminButtons(activity)}
                 </div>
               );

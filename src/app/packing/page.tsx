@@ -2,35 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import { PackingItem } from '@/lib/db';
-import { useRouter } from 'next/navigation';
 import { Trash2, CheckCircle, Circle, Check, Plus } from 'lucide-react';
 import { displayName } from '@/lib/displayName';
+import { useSession } from '@/lib/useSession';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
+import SignInHint from '@/components/SignInHint';
 
 export default function PackingPage() {
   const [items, setItems] = useState<PackingItem[]>([]);
-  const [user, setUser] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { user, isAdmin, ready } = useSession();
   const [users, setUsers] = useState<string[]>([]);
   const [newSharedName, setNewSharedName] = useState('');
   const [newSharedAssignee, setNewSharedAssignee] = useState('');
   const [newPersonalName, setNewPersonalName] = useState('');
   const [newProvidedName, setNewProvidedName] = useState('');
 
-  const router = useRouter();
-
   useEffect(() => {
-    fetch('/api/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.user) {
-          router.push('/login');
-        } else {
-          setUser(data.user);
-          setIsAdmin(data.isAdmin);
-        }
-      });
-
     fetch('/api/packing')
       .then((res) => res.json())
       .then(setItems);
@@ -39,7 +26,7 @@ export default function PackingPage() {
       .then((r) => r.json())
       .then((data: { name: string }[]) => setUsers(data.map((u) => u.name)))
       .catch(() => {}); // non-fatal
-  }, [router]);
+  }, []);
 
   const fetchItems = async () => {
     const res = await fetch('/api/packing');
@@ -105,7 +92,10 @@ export default function PackingPage() {
     fetchItems();
   };
 
-  if (!user) return <div className="p-8">Loading...</div>;
+  if (!ready) return <div className="p-8">Loading...</div>;
+
+  // View-only visitors see the campground and shared lists; a personal list needs an account.
+  const canEdit = user !== null;
 
   const provided = items.filter((i) => i.provided);
   const personal = items.filter((i) => !i.provided && i.personal && i.user === user);
@@ -116,8 +106,9 @@ export default function PackingPage() {
   const packToggle = (item: PackingItem) => (
     <button
       onClick={() => togglePacked(item)}
-      className={item.packed ? 'text-green-500 shrink-0' : 'text-gray-400 hover:text-green-600 shrink-0'}
-      title={item.packed ? 'Packed — click to unmark' : 'Mark as packed'}
+      disabled={!canEdit}
+      className={item.packed ? 'text-green-500 shrink-0' : canEdit ? 'text-gray-400 hover:text-green-600 shrink-0' : 'text-gray-400 shrink-0'}
+      title={!canEdit ? (item.packed ? 'Packed' : 'Not packed yet') : item.packed ? 'Packed — click to unmark' : 'Mark as packed'}
     >
       {item.packed ? <CheckCircle className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
     </button>
@@ -198,7 +189,7 @@ export default function PackingPage() {
           <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>Group gear everyone can see — assign who&apos;s bringing each item.</p>
         </div>
         {shared.length === 0 ? (
-          <div className="p-6 text-center text-gray-400 italic">No shared items yet — add the first one below.</div>
+          <div className="p-6 text-center text-gray-400 italic">{canEdit ? 'No shared items yet — add the first one below.' : 'No shared items yet.'}</div>
         ) : (
           <ul className="divide-y divide-gray-200">
             {shared.map((item) => (
@@ -211,26 +202,31 @@ export default function PackingPage() {
                       <span className="text-xs text-gray-400">Added by {displayName(item.user)}</span>
                     )}
                     <span className="text-xs" style={{ color: 'var(--muted)' }}>Brought by:</span>
-                    <select
-                      className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600"
-                      value={item.assignee ?? ''}
-                      onChange={(e) => handleAssigneeChange(item, e.target.value)}
-                    >
-                      <option value="">Unassigned</option>
-                      {users.map((u) => (
-                        <option key={u} value={u}>{displayName(u)}</option>
-                      ))}
-                    </select>
-                    {item.assignee === user && (
+                    {canEdit ? (
+                      <select
+                        className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600"
+                        value={item.assignee ?? ''}
+                        onChange={(e) => handleAssigneeChange(item, e.target.value)}
+                      >
+                        <option value="">Unassigned</option>
+                        {users.map((u) => (
+                          <option key={u} value={u}>{displayName(u)}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-xs text-gray-600">{item.assignee ? displayName(item.assignee) : 'Unassigned'}</span>
+                    )}
+                    {user !== null && item.assignee === user && (
                       <span className="text-xs font-medium text-blue-600">You&apos;re on it!</span>
                     )}
                   </div>
                 </div>
-                {deleteButton(item)}
+                {canEdit && deleteButton(item)}
               </li>
             ))}
           </ul>
         )}
+        {canEdit && (
         <form
           onSubmit={handleAddShared}
           className="flex gap-2 px-4 py-3 flex-wrap"
@@ -262,9 +258,12 @@ export default function PackingPage() {
             <Plus className="w-3.5 h-3.5" /> Add
           </button>
         </form>
+        )}
       </div>
 
       {/* Personal packing list */}
+      {!user && <SignInHint panel className="mb-6" action="keep your own packing list" />}
+      {user && (
       <div className="mb-6 overflow-hidden" style={{ border: '1px solid var(--border)' }}>
         <div className="px-4 py-3 border-b bg-gray-50">
           <h2 className="font-medium text-sm uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
@@ -307,6 +306,7 @@ export default function PackingPage() {
           </button>
         </form>
       </div>
+      )}
     </div>
   );
 }

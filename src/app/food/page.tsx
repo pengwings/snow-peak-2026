@@ -2,16 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { FoodIdea, FoodIngredient } from '@/lib/db';
-import { useRouter } from 'next/navigation';
 import { CheckCircle, Circle, Plus, ShoppingBasket, Trash2 } from 'lucide-react';
 import { displayName } from '@/lib/displayName';
 import { FOOD_AGREED_THRESHOLD, isFoodApproved } from '@/lib/food';
+import { useSession } from '@/lib/useSession';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
+import SignInHint from '@/components/SignInHint';
 
 export default function FoodPage() {
   const [ideas, setIdeas] = useState<FoodIdea[]>([]);
-  const [user, setUser] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { user, isAdmin, ready } = useSession();
   const [users, setUsers] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
@@ -20,20 +20,7 @@ export default function FoodPage() {
   const [ingredientDrafts, setIngredientDrafts] = useState<Record<string, { name: string; assignee: string }>>({});
   const formRef = useRef<HTMLDivElement>(null);
 
-  const router = useRouter();
-
   useEffect(() => {
-    fetch('/api/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.user) {
-          router.push('/login');
-        } else {
-          setUser(data.user);
-          setIsAdmin(data.isAdmin);
-        }
-      });
-
     fetch('/api/food')
       .then((res) => res.json())
       .then(setIdeas);
@@ -42,7 +29,7 @@ export default function FoodPage() {
       .then((r) => r.json())
       .then((data: { name: string }[]) => setUsers(data.map((u) => u.name)))
       .catch(() => {}); // non-fatal
-  }, [router]);
+  }, []);
 
   const post = async (body: Record<string, unknown>) => {
     const res = await fetch('/api/food', {
@@ -113,7 +100,10 @@ export default function FoodPage() {
   const handleRemoveIngredient = (ing: FoodIngredient) =>
     post({ action: 'removeIngredient', foodId: ing.foodId, ingredientId: ing.id });
 
-  if (!user) return <div className="p-8">Loading...</div>;
+  if (!ready) return <div className="p-8">Loading...</div>;
+
+  // View-only visitors see the menu, votes, and shopping lists but can't change them.
+  const canEdit = user !== null;
 
   const sorted = [...ideas].sort((a, b) => b.votes.length - a.votes.length);
   const promoted = sorted.filter((f) => f.promoted);
@@ -121,7 +111,8 @@ export default function FoodPage() {
   const proposed = sorted.filter((f) => !isFoodApproved(f));
 
   const voteButton = (idea: FoodIdea, tone: 'plain' | 'green') => {
-    const hasVoted = idea.votes.includes(user);
+    if (!canEdit) return <SignInHint action="vote" />;
+    const hasVoted = user !== null && idea.votes.includes(user);
     return (
       <button
         onClick={() => handleVote(idea.id)}
@@ -185,7 +176,7 @@ export default function FoodPage() {
         </div>
         {idea.ingredients.length === 0 ? (
           <p className="px-3 py-3 text-xs italic" style={{ color: 'var(--muted)' }}>
-            No ingredients yet — add what needs buying below.
+            {canEdit ? 'No ingredients yet — add what needs buying below.' : 'No ingredients yet.'}
           </p>
         ) : (
           <ul className="divide-y divide-gray-200">
@@ -193,8 +184,9 @@ export default function FoodPage() {
               <li key={ing.id} className="px-3 py-2 flex items-center gap-3 hover:bg-gray-50 transition">
                 <button
                   onClick={() => togglePurchased(ing)}
-                  className={ing.purchased ? 'text-green-500 shrink-0' : 'text-gray-400 hover:text-green-600 shrink-0'}
-                  title={ing.purchased ? 'Bought — click to unmark' : 'Mark as bought'}
+                  disabled={!canEdit}
+                  className={ing.purchased ? 'text-green-500 shrink-0' : canEdit ? 'text-gray-400 hover:text-green-600 shrink-0' : 'text-gray-400 shrink-0'}
+                  title={!canEdit ? (ing.purchased ? 'Bought' : 'Not bought yet') : ing.purchased ? 'Bought — click to unmark' : 'Mark as bought'}
                 >
                   {ing.purchased ? <CheckCircle className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
                 </button>
@@ -204,32 +196,39 @@ export default function FoodPage() {
                   </span>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     <span className="text-xs" style={{ color: 'var(--muted)' }}>Buying:</span>
-                    <select
-                      className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600 bg-white"
-                      value={ing.assignee ?? ''}
-                      onChange={(e) => handleIngredientAssignee(ing, e.target.value)}
-                    >
-                      <option value="">Unassigned</option>
-                      {users.map((u) => (
-                        <option key={u} value={u}>{displayName(u)}</option>
-                      ))}
-                    </select>
-                    {ing.assignee === user && !ing.purchased && (
+                    {canEdit ? (
+                      <select
+                        className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600 bg-white"
+                        value={ing.assignee ?? ''}
+                        onChange={(e) => handleIngredientAssignee(ing, e.target.value)}
+                      >
+                        <option value="">Unassigned</option>
+                        {users.map((u) => (
+                          <option key={u} value={u}>{displayName(u)}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-xs text-gray-600">{ing.assignee ? displayName(ing.assignee) : 'Unassigned'}</span>
+                    )}
+                    {user !== null && ing.assignee === user && !ing.purchased && (
                       <span className="text-xs font-medium text-blue-600">You&apos;re on it!</span>
                     )}
                   </div>
                 </div>
-                <button
-                  onClick={() => handleRemoveIngredient(ing)}
-                  className="text-red-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition shrink-0"
-                  title="Remove ingredient"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {canEdit && (
+                  <button
+                    onClick={() => handleRemoveIngredient(ing)}
+                    className="text-red-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition shrink-0"
+                    title="Remove ingredient"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </li>
             ))}
           </ul>
         )}
+        {canEdit && (
         <form
           onSubmit={(e) => handleAddIngredient(e, idea.id)}
           className="flex gap-2 px-3 py-2 flex-wrap"
@@ -261,6 +260,7 @@ export default function FoodPage() {
             <Plus className="w-3.5 h-3.5" /> Add
           </button>
         </form>
+        )}
       </div>
     );
   };
@@ -273,6 +273,8 @@ export default function FoodPage() {
       </div>
       <div className="w-8 h-px mb-8" style={{ background: 'var(--border)' }} />
 
+      {!canEdit && <SignInHint panel className="mb-8" action="suggest a dish, vote, or build the shopping list" />}
+      {canEdit && (
       <div ref={formRef} className="mb-8 p-6" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
         <h2 className="text-xl font-semibold mb-1 text-gray-900">{editingId ? 'Edit Food Idea' : 'Suggest Something to Cook'}</h2>
         {!editingId && (
@@ -315,6 +317,7 @@ export default function FoodPage() {
           </div>
         </form>
       </div>
+      )}
 
       {promoted.length > 0 && (
         <div className="mb-8">

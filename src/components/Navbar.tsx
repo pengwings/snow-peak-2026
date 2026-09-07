@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { HomeIcon as Cabin, Plane, ShoppingCart, Activity, MapPin, ChefHat, CheckSquare, Luggage, Trophy } from 'lucide-react';
+import { HomeIcon as Cabin, Plane, ShoppingCart, Activity, MapPin, ChefHat, CheckSquare, Luggage, Trophy, Eye } from 'lucide-react';
 import { displayName } from '@/lib/displayName';
 
 export default function Navbar() {
@@ -12,6 +12,7 @@ export default function Navbar() {
   const [user, setUser] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [realAdmin, setRealAdmin] = useState(false);
+  const [viewer, setViewer] = useState(false);
   const [hiddenTabs, setHiddenTabs] = useState<string[]>([]);
 
   useEffect(() => {
@@ -21,6 +22,7 @@ export default function Navbar() {
         setUser(data.user);
         setIsAdmin(!!data.isAdmin);
         setRealAdmin(!!data.realAdmin);
+        setViewer(!!data.viewer);
       });
     const fetchTabs = () =>
       fetch('/api/tabs')
@@ -129,6 +131,27 @@ export default function Navbar() {
               {visibleLinks.map((link) => renderLink(link, false))}
             </div>
           </div>
+
+          {/* View-only visitors: badge plus a way in */}
+          {!user && viewer && (
+            <div className="flex items-center gap-3">
+              <span
+                className="hidden sm:flex text-[10px] tracking-wide uppercase px-2 py-1 rounded items-center gap-1.5"
+                style={{ color: 'var(--muted)', border: '1px solid var(--border)' }}
+                title="You can browse everything but not make changes"
+              >
+                <Eye className="w-3 h-3" />
+                View only
+              </span>
+              <Link
+                href="/login"
+                className="text-xs tracking-wide uppercase px-3 py-1.5 rounded transition-opacity hover:opacity-80"
+                style={{ background: 'var(--accent)', color: '#f5f0e8', border: '1px solid var(--accent)' }}
+              >
+                Sign in
+              </Link>
+            </div>
+          )}
 
           {/* User / admin mode / logout */}
           {user && (

@@ -1,9 +1,19 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { findMatchingName } from '@/lib/nameMatch';
+import { VIEWER_COOKIE } from '@/lib/auth';
 
 export async function POST(request: Request) {
-  const { name } = await request.json();
+  const { name, viewOnly } = await request.json();
+
+  // "Browse without signing in": no account needed, pages render read-only.
+  if (viewOnly === true) {
+    const response = NextResponse.json({ success: true, viewer: true });
+    response.cookies.set(VIEWER_COOKIE, '1', { httpOnly: true, path: '/' });
+    response.cookies.set('user', '', { httpOnly: true, path: '/', maxAge: 0 });
+    response.cookies.set('adminMode', '', { httpOnly: true, path: '/', maxAge: 0 });
+    return response;
+  }
 
   if (!name || name.trim() === '') {
     return NextResponse.json({ error: 'Name is required' }, { status: 400 });
@@ -26,6 +36,7 @@ export async function POST(request: Request) {
   });
   // Every login starts with admin mode off; it takes the password to turn on
   response.cookies.set('adminMode', '', { httpOnly: true, path: '/', maxAge: 0 });
+  response.cookies.set(VIEWER_COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 });
 
   return response;
 }

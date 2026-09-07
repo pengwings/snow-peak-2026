@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { getSessionUser } from '@/lib/auth';
+import { getSessionUser, isViewOnly } from '@/lib/auth';
 import { extractMyMapsId } from '@/lib/myMaps';
 
 export async function GET() {
   const user = await getSessionUser();
-  if (!user) {
+  if (!user && !(await isViewOnly())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   return NextResponse.json({ mapId: await db.getMapId() });

@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { displayName } from '@/lib/displayName';
+import { useSession } from '@/lib/useSession';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
+import SignInHint from '@/components/SignInHint';
 import FactsForm from '@/components/trivia/FactsForm';
 import { useTriviaState } from '@/lib/useTriviaState';
 import {
@@ -13,30 +15,18 @@ import {
 
 export default function TriviaPage() {
   const router = useRouter();
-  const [user, setUser] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  // View-only visitors get the spectator state from the server: they can watch but not answer.
+  const { user, isAdmin, ready } = useSession();
   const { state, error, timeLeftMs, apply } = useTriviaState(1500);
   const [submitting, setSubmitting] = useState<number | null>(null);
   const [answerError, setAnswerError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch('/api/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.user) router.push('/login');
-        else {
-          setUser(data.user);
-          setIsAdmin(!!data.isAdmin);
-        }
-      });
-  }, [router]);
 
   useEffect(() => {
     if (error === 'unauthorized') router.push('/login');
   }, [error, router]);
 
   const answer = async (choice: number) => {
-    if (!state?.question || state.myAnswer || submitting !== null) return;
+    if (!user || !state?.question || state.myAnswer || submitting !== null) return;
     setSubmitting(choice);
     setAnswerError(null);
     const res = await fetch('/api/trivia/answer', {
@@ -50,7 +40,7 @@ export default function TriviaPage() {
     setSubmitting(null);
   };
 
-  if (!user || !state) return <div className="p-8" style={{ color: 'var(--muted)' }}>Loading…</div>;
+  if (!ready || !state) return <div className="p-8" style={{ color: 'var(--muted)' }}>Loading…</div>;
 
   const header = (
     <>
@@ -87,7 +77,17 @@ export default function TriviaPage() {
     return (
       <div className="max-w-3xl mx-auto px-6 py-12">
         {header}
-        <FactsForm />
+        {user ? (
+          <FactsForm />
+        ) : (
+          <Panel>
+            <SectionTitle>A trivia game is coming</SectionTitle>
+            <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>
+              Everyone on the trip submits a few facts about themselves and a hobby, and Brian turns them into questions for the whole group.
+            </p>
+            <SignInHint action="submit your facts" />
+          </Panel>
+        )}
       </div>
     );
   }
@@ -109,11 +109,12 @@ export default function TriviaPage() {
           {state.players.length} joined
         </p>
         <p className="text-sm" style={{ color: 'var(--foreground)' }}>{state.players.map(displayName).join(' · ')}</p>
+        {!user && <SignInHint className="mt-6" action="play along" />}
       </Panel>
     );
   } else if (state.phase === 'question' && state.question) {
     const timeUp = timeLeftMs <= 0;
-    const locked = !!state.myAnswer || timeUp;
+    const locked = !user || !!state.myAnswer || timeUp;
     body = (
       <Panel>
         {progress}
@@ -146,15 +147,19 @@ export default function TriviaPage() {
             );
           })}
         </div>
-        <p className="mt-5 text-sm text-center" style={{ color: state.myAnswer ? CORRECT : 'var(--muted)' }}>
-          {answerError
-            ? <span style={{ color: WRONG }}>{answerError}</span>
-            : state.myAnswer
-              ? `Locked in ✓ · ${state.answeredCount} of ${state.players.length} answered`
-              : timeUp
-                ? "Time's up!"
-                : 'Tap an answer. First tap counts.'}
-        </p>
+        {!user ? (
+          <SignInHint className="mt-5 text-center" action="play along" />
+        ) : (
+          <p className="mt-5 text-sm text-center" style={{ color: state.myAnswer ? CORRECT : 'var(--muted)' }}>
+            {answerError
+              ? <span style={{ color: WRONG }}>{answerError}</span>
+              : state.myAnswer
+                ? `Locked in ✓ · ${state.answeredCount} of ${state.players.length} answered`
+                : timeUp
+                  ? "Time's up!"
+                  : 'Tap an answer. First tap counts.'}
+          </p>
+        )}
       </Panel>
     );
   } else if (state.phase === 'reveal' && state.question && state.reveal) {
@@ -167,9 +172,11 @@ export default function TriviaPage() {
         {state.reveal.about && (
           <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>About {displayName(state.reveal.about)}</p>
         )}
-        <p className="text-lg font-medium mb-5" style={{ color: correct ? CORRECT : WRONG }}>
-          {mine ? (correct ? `Correct! +1 (${(mine.elapsedMs / 1000).toFixed(1)}s)` : 'Not this time.') : 'You didn’t answer.'}
-        </p>
+        {user && (
+          <p className="text-lg font-medium mb-5" style={{ color: correct ? CORRECT : WRONG }}>
+            {mine ? (correct ? `Correct! +1 (${(mine.elapsedMs / 1000).toFixed(1)}s)` : 'Not this time.') : 'You didn’t answer.'}
+          </p>
+        )}
         <RevealBars options={state.question.options} reveal={state.reveal} myChoice={mine?.choice ?? null} showNames={false} />
       </Panel>
     );
