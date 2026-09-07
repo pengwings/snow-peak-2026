@@ -8,7 +8,6 @@ import { displayName } from '@/lib/displayName';
 import { Download } from 'lucide-react';
 import { SectionTitle, WRONG, CORRECT } from '@/components/trivia/TriviaShared';
 import { buildTriviaPrompt } from '@/lib/triviaPrompt';
-import { apiFetch } from '@/lib/basePath';
 
 type FactKey = 'selfFacts' | 'hobbyFacts';
 type Editing = { username: string; field: FactKey | 'hobby'; index: number; value: string } | null;
@@ -25,7 +24,7 @@ export default function TriviaSubmissionsPage() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    apiFetch('/api/me')
+    fetch('/api/me')
       .then((res) => res.json())
       .then((data) => {
         if (!data.user) router.push('/login');
@@ -35,7 +34,7 @@ export default function TriviaSubmissionsPage() {
 
   useEffect(() => {
     if (!me?.isAdmin) return;
-    apiFetch('/api/trivia/facts')
+    fetch('/api/trivia/facts')
       .then((res) => res.json())
       .then((data) => {
         setFacts(data.all ?? []);
@@ -46,7 +45,7 @@ export default function TriviaSubmissionsPage() {
 
   const save = async (body: Record<string, unknown>) => {
     setMessage(null);
-    const res = await apiFetch('/api/trivia/facts', {
+    const res = await fetch('/api/trivia/facts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -92,7 +91,7 @@ export default function TriviaSubmissionsPage() {
 
   /** The full LLM prompt with every guest's facts embedded, ready to paste. */
   const buildPrompt = async () => {
-    const res = await apiFetch('/api/users');
+    const res = await fetch('/api/users');
     const users: { name: string }[] = await res.json();
     return buildTriviaPrompt(
       users.map((u) => u.name),

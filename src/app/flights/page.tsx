@@ -6,7 +6,6 @@ import { displayName } from '@/lib/displayName';
 import { useSession } from '@/lib/useSession';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
 import SignInHint from '@/components/SignInHint';
-import { apiFetch } from '@/lib/basePath';
 
 function formatDateTime(dateTimeStr: string): string {
   if (!dateTimeStr) return '—';
@@ -49,18 +48,18 @@ export default function FlightsPage() {
 
 
   useEffect(() => {
-    apiFetch('/api/flights')
+    fetch('/api/flights')
       .then((res) => res.json())
       .then(setFlights);
 
-    apiFetch('/api/users')
+    fetch('/api/users')
       .then((r) => r.json())
       .then((data: { name: string }[]) => setUsers(data.map((u) => u.name)))
       .catch(() => {}); // non-fatal
   }, []);
 
   const fetchFlights = async () => {
-    const res = await apiFetch('/api/flights');
+    const res = await fetch('/api/flights');
     const data = await res.json();
     setFlights(data);
   };
@@ -98,7 +97,7 @@ export default function FlightsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await apiFetch('/api/flights', {
+    await fetch('/api/flights', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

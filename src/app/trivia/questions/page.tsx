@@ -7,7 +7,6 @@ import { Upload } from 'lucide-react';
 import type { TriviaQuestion, User } from '@/lib/db';
 import { displayName } from '@/lib/displayName';
 import { Panel, SectionTitle, letter, CORRECT, WRONG } from '@/components/trivia/TriviaShared';
-import { apiFetch } from '@/lib/basePath';
 
 type Draft = { text: string; options: string[]; correctIndex: number; about: string };
 const emptyDraft = (): Draft => ({ text: '', options: ['', '', '', ''], correctIndex: 0, about: '' });
@@ -58,7 +57,7 @@ export default function TriviaQuestionsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    apiFetch('/api/me')
+    fetch('/api/me')
       .then((res) => res.json())
       .then((data) => {
         if (!data.user) router.push('/login');
@@ -67,8 +66,8 @@ export default function TriviaQuestionsPage() {
   }, [router]);
 
   const loadAll = useCallback(() => {
-    apiFetch('/api/trivia/questions').then((res) => (res.ok ? res.json() : [])).then(setQuestions);
-    apiFetch('/api/users').then((res) => res.json()).then(setUsers);
+    fetch('/api/trivia/questions').then((res) => (res.ok ? res.json() : [])).then(setQuestions);
+    fetch('/api/users').then((res) => res.json()).then(setUsers);
   }, []);
 
   useEffect(() => {
@@ -76,7 +75,7 @@ export default function TriviaQuestionsPage() {
   }, [me, loadAll]);
 
   const post = async (body: Record<string, unknown>) => {
-    const res = await apiFetch('/api/trivia/questions', {
+    const res = await fetch('/api/trivia/questions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -117,7 +116,7 @@ export default function TriviaQuestionsPage() {
     setImporting(true);
     setImportErrors([]);
     setImportNotice(null);
-    const res = await apiFetch('/api/trivia/questions', {
+    const res = await fetch('/api/trivia/questions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'import', content: importText, mode: importMode }),

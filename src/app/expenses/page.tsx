@@ -6,7 +6,6 @@ import { displayName } from '@/lib/displayName';
 import { useSession } from '@/lib/useSession';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
 import SignInHint from '@/components/SignInHint';
-import { apiFetch } from '@/lib/basePath';
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -21,17 +20,17 @@ export default function ExpensesPage() {
   const [splitDraft, setSplitDraft] = useState<string[]>([]);
 
   const fetchExpenses = async () => {
-    const res = await apiFetch('/api/expenses');
+    const res = await fetch('/api/expenses');
     const data = await res.json();
     setExpenses(data);
   };
 
   useEffect(() => {
-    apiFetch('/api/expenses')
+    fetch('/api/expenses')
       .then((res) => res.json())
       .then(setExpenses);
 
-    apiFetch('/api/users')
+    fetch('/api/users')
       .then((res) => res.json())
       .then((data: { name: string }[]) => {
         const names = data.map((u) => u.name);
@@ -42,7 +41,7 @@ export default function ExpensesPage() {
 
   const handleUpdate = async (expenseId: string, field: 'name' | 'buyer' | 'amountPaid') => {
     const value = editingExpense[expenseId]?.[field];
-    await apiFetch('/api/expenses', {
+    await fetch('/api/expenses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -56,7 +55,7 @@ export default function ExpensesPage() {
   };
 
   const handleToggleSettled = async (expense: Expense) => {
-    await apiFetch('/api/expenses', {
+    await fetch('/api/expenses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ expenseId: expense.id, action: 'update', settled: !expense.settled }),
@@ -69,7 +68,7 @@ export default function ExpensesPage() {
       return;
     }
 
-    await apiFetch('/api/expenses', {
+    await fetch('/api/expenses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ expenseId, action: 'delete' }),
@@ -84,7 +83,7 @@ export default function ExpensesPage() {
     const buyer = newExpenseBuyer.trim() || null;
     const amountPaid = newExpenseAmount ? parseFloat(newExpenseAmount) : null;
 
-    await apiFetch('/api/expenses', {
+    await fetch('/api/expenses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'add', name: newExpenseName, buyer, amountPaid, participants: newExpenseParticipants }),
@@ -102,7 +101,7 @@ export default function ExpensesPage() {
   };
 
   const handleSaveSplit = async (expenseId: string) => {
-    await apiFetch('/api/expenses', {
+    await fetch('/api/expenses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ expenseId, action: 'update', participants: splitDraft }),

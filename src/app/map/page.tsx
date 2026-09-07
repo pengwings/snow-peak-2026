@@ -5,7 +5,6 @@ import { ExternalLink, MapPin } from 'lucide-react';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
 import { myMapsEmbedUrl, myMapsViewerUrl } from '@/lib/myMaps';
 import { useSession } from '@/lib/useSession';
-import { apiFetch } from '@/lib/basePath';
 
 export default function MapPage() {
   const { isAdmin, ready } = useSession();
@@ -16,7 +15,7 @@ export default function MapPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    apiFetch('/api/map')
+    fetch('/api/map')
       .then((res) => res.json())
       .then((data) => {
         setMapId(data.mapId ?? null);
@@ -28,7 +27,7 @@ export default function MapPage() {
     e.preventDefault();
     setSaving(true);
     setError(null);
-    const res = await apiFetch('/api/map', {
+    const res = await fetch('/api/map', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ link }),
@@ -46,7 +45,7 @@ export default function MapPage() {
   const handleClear = async () => {
     if (!window.confirm('Remove the map from this tab?')) return;
     setSaving(true);
-    await apiFetch('/api/map', {
+    await fetch('/api/map', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ link: '' }),

@@ -6,7 +6,6 @@ import { displayName } from '@/lib/displayName';
 import { useSession } from '@/lib/useSession';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
 import SignInHint from '@/components/SignInHint';
-import { apiFetch } from '@/lib/basePath';
 
 export default function ActivitiesPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -17,13 +16,13 @@ export default function ActivitiesPage() {
   const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    apiFetch('/api/activities')
+    fetch('/api/activities')
       .then((res) => res.json())
       .then(setActivities);
   }, []);
 
   const fetchActivities = async () => {
-    const res = await apiFetch('/api/activities');
+    const res = await fetch('/api/activities');
     const data = await res.json();
     setActivities(data);
   };
@@ -32,7 +31,7 @@ export default function ActivitiesPage() {
     e.preventDefault();
     if (!newName.trim()) return;
 
-    await apiFetch('/api/activities', {
+    await fetch('/api/activities', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(
@@ -62,7 +61,7 @@ export default function ActivitiesPage() {
   };
 
   const handlePromote = async (activityId: string) => {
-    await apiFetch('/api/activities', {
+    await fetch('/api/activities', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'promote', activityId }),
@@ -71,7 +70,7 @@ export default function ActivitiesPage() {
   };
 
   const handleVote = async (activityId: string) => {
-    await apiFetch('/api/activities', {
+    await fetch('/api/activities', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'vote', activityId }),
