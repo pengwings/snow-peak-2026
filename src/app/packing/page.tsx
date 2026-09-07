@@ -5,6 +5,7 @@ import { PackingItem } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 import { Trash2, CheckCircle, Circle, Check, Plus } from 'lucide-react';
 import { displayName } from '@/lib/displayName';
+import TabVisibilityToggle from '@/components/TabVisibilityToggle';
 
 export default function PackingPage() {
   const [items, setItems] = useState<PackingItem[]>([]);
@@ -134,7 +135,10 @@ export default function PackingPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-12">
-      <h1 className="text-4xl font-normal mb-2" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Packing List</h1>
+      <div className="flex items-center gap-3 mb-2">
+        <h1 className="text-4xl font-normal" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Packing List</h1>
+        <TabVisibilityToggle />
+      </div>
       <div className="w-8 h-px mb-6" style={{ background: 'var(--border)' }} />
 
       {/* Provided at the campground */}
@@ -145,7 +149,6 @@ export default function PackingPage() {
           </h2>
           <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
             No need to pack these — they&apos;ll be there waiting for you.
-            {!isAdmin && ' Only a trip admin can change this list.'}
           </p>
         </div>
         {provided.length === 0 ? (

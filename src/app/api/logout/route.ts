@@ -7,6 +7,11 @@ export async function POST() {
     path: '/',
     maxAge: 0,
   });
+  response.cookies.set('adminMode', '', {
+    httpOnly: true,
+    path: '/',
+    maxAge: 0,
+  });
 
   return response;
 }

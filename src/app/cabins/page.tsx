@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Cabin } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 import { displayName } from '@/lib/displayName';
+import TabVisibilityToggle from '@/components/TabVisibilityToggle';
 
 export default function CabinsPage() {
   const [cabins, setCabins] = useState<Cabin[]>([]);
@@ -54,7 +55,10 @@ export default function CabinsPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-8 py-10">
-      <h1 className="text-4xl font-normal mb-1" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Snow Peak Cabin Map</h1>
+      <div className="flex items-center gap-3 mb-1">
+        <h1 className="text-4xl font-normal" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Snow Peak Cabin Map</h1>
+        <TabVisibilityToggle />
+      </div>
       <div className="w-8 h-px mb-4" style={{ background: 'var(--border)' }} />
       {/* Interactive Map Visual */}
       <div className="bg-[#f2ece3] rounded-xl p-0 mb-12 shadow-inner relative overflow-hidden h-[600px] w-full max-w-[500px] mx-auto border-2 border-stone-300">

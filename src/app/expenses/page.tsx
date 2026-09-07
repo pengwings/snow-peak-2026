@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Expense } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 import { displayName } from '@/lib/displayName';
+import TabVisibilityToggle from '@/components/TabVisibilityToggle';
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -163,7 +164,10 @@ export default function ExpensesPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-12">
-      <h1 className="text-4xl font-normal mb-2" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Expenses</h1>
+      <div className="flex items-center gap-3 mb-2">
+        <h1 className="text-4xl font-normal" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Expenses</h1>
+        <TabVisibilityToggle />
+      </div>
       <div className="w-8 h-px mb-8" style={{ background: 'var(--border)' }} />
 
       {/* Add New Expense Form */}

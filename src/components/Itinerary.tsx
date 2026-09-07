@@ -441,12 +441,6 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
         </div>
       </div>
 
-      {!isAdmin && (
-        <p className="mt-4 text-xs text-center" style={{ color: 'var(--muted)' }}>
-          Only a trip admin can change the schedule.
-        </p>
-      )}
-
       {/* Event details popout, anchored beside the clicked block */}
       {selected && (
         <>

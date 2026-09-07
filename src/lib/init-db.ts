@@ -22,6 +22,13 @@ async function init() {
             ON CONFLICT (name) DO UPDATE SET is_admin = true`;
 
   await sql`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value JSONB
+    );
+  `;
+
+  await sql`
     CREATE TABLE IF NOT EXISTS cabins (
       id TEXT PRIMARY KEY,
       name TEXT,

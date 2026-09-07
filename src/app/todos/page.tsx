@@ -5,6 +5,7 @@ import { Todo } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 import { Trash2, CheckCircle, Circle } from 'lucide-react';
 import { displayName } from '@/lib/displayName';
+import TabVisibilityToggle from '@/components/TabVisibilityToggle';
 
 export default function TodosPage() {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -93,7 +94,10 @@ export default function TodosPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-12">
-      <h1 className="text-4xl font-normal mb-2" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Trip Todo List</h1>
+      <div className="flex items-center gap-3 mb-2">
+        <h1 className="text-4xl font-normal" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Trip Todo List</h1>
+        <TabVisibilityToggle />
+      </div>
       <div className="w-8 h-px mb-6" style={{ background: 'var(--border)' }} />
 
       <div className="mb-6 p-5" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>

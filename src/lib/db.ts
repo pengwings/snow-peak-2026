@@ -84,6 +84,17 @@ export const db = {
     await sql`INSERT INTO users (name) VALUES (${name}) ON CONFLICT DO NOTHING`;
   },
 
+  async getHiddenTabs(): Promise<string[]> {
+    const rows = await sql`SELECT value FROM app_settings WHERE key = 'hidden_tabs'`;
+    if (!rows.length) return [];
+    const value = rows[0].value;
+    return typeof value === 'string' ? JSON.parse(value) : (value || []);
+  },
+  async setHiddenTabs(tabs: string[]) {
+    await sql`INSERT INTO app_settings (key, value) VALUES ('hidden_tabs', ${JSON.stringify(tabs)}::jsonb)
+              ON CONFLICT (key) DO UPDATE SET value = ${JSON.stringify(tabs)}::jsonb`;
+  },
+
   async getScheduleItems(): Promise<ScheduleItem[]> {
     const rows = await sql`SELECT * FROM schedule_items ORDER BY day, time`;
     return rows.map((r: any) => ({

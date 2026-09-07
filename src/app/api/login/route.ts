@@ -24,6 +24,8 @@ export async function POST(request: Request) {
     path: '/',
     // session cookie
   });
+  // Every login starts with admin mode off; it takes the password to turn on
+  response.cookies.set('adminMode', '', { httpOnly: true, path: '/', maxAge: 0 });
 
   return response;
 }

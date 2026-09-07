@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Activity } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 import { displayName } from '@/lib/displayName';
+import TabVisibilityToggle from '@/components/TabVisibilityToggle';
 
 export default function ActivitiesPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -124,7 +125,10 @@ export default function ActivitiesPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-12">
-      <h1 className="text-4xl font-normal mb-2" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Trip Activities</h1>
+      <div className="flex items-center gap-3 mb-2">
+        <h1 className="text-4xl font-normal" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Trip Activities</h1>
+        <TabVisibilityToggle />
+      </div>
       <div className="w-8 h-px mb-8" style={{ background: 'var(--border)' }} />
 
       <div ref={formRef} className="mb-8 p-6" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>

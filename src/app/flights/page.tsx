@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Flight } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 import { displayName } from '@/lib/displayName';
+import TabVisibilityToggle from '@/components/TabVisibilityToggle';
 
 function formatDateTime(dateTimeStr: string): string {
   if (!dateTimeStr) return '—';
@@ -137,7 +138,10 @@ export default function FlightsPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-12">
-      <h1 className="text-4xl font-normal mb-2" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Flight Information</h1>
+      <div className="flex items-center gap-3 mb-2">
+        <h1 className="text-4xl font-normal" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Flight Information</h1>
+        <TabVisibilityToggle />
+      </div>
       <div className="w-8 h-px mb-8" style={{ background: 'var(--border)' }} />
 
       <div className="mb-8 p-6" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
