@@ -61,3 +61,15 @@ A full-stack, nature-inspired web application built with [Next.js](https://nextj
 ## Production Deployment (Vercel)
 
 Set the `DATABASE_URL` environment variable in your Vercel project settings to your [Neon](https://neon.tech) connection string. The app automatically uses the Neon WebSocket driver in production.
+
+### URL
+
+The app lives at **https://snow-peak.brian-yu.com**, a subdomain attached to the
+`snow-peak-2026` Vercel project. The `brian-yu.com` DNS zone is hosted at GoDaddy (the
+personal site in the `about-brian` repo owns the apex); the `snow-peak` record there points at
+Vercel, which provisions the certificate itself.
+
+The project also answers on its `*.vercel.app` addresses. Setting `CANONICAL_HOST` to
+`snow-peak.brian-yu.com` in the project's **Production** environment (then redeploying) makes
+those addresses redirect to the subdomain; see `next.config.ts`. Leave it unset for Preview so
+preview URLs keep working.
