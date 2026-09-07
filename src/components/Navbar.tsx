@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Home, HomeIcon as Cabin, Plane, ShoppingCart, Activity, CheckSquare, Luggage } from 'lucide-react';
+import { HomeIcon as Cabin, Plane, ShoppingCart, Activity, CheckSquare, Luggage } from 'lucide-react';
 import { displayName } from '@/lib/displayName';
 
 export default function Navbar() {
@@ -28,7 +28,6 @@ export default function Navbar() {
   };
 
   const navLinks = [
-    { href: '/', label: 'Home', icon: Home },
     { href: '/cabins', label: 'Cabins', icon: Cabin },
     { href: '/flights', label: 'Flights', icon: Plane },
     { href: '/expenses', label: 'Expenses', icon: ShoppingCart },
@@ -44,12 +43,13 @@ export default function Navbar() {
 
           {/* Brand */}
           <div className="flex items-center gap-8">
-            <span
-              className="font-semibold tracking-[0.15em] uppercase text-xs"
+            <Link
+              href="/"
+              className="font-semibold tracking-[0.15em] uppercase text-xs hover:opacity-80 transition-opacity"
               style={{ color: 'var(--accent)', fontFamily: 'Inter, sans-serif' }}
             >
               Snow Peak 2026
-            </span>
+            </Link>
 
             {/* Desktop links */}
             <div className="hidden sm:flex sm:gap-1">

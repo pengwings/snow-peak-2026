@@ -171,12 +171,7 @@ export default function ActivitiesPage() {
           <div className="grid gap-4 md:grid-cols-2">
             {promotedActivities.map((activity) => (
               <div key={activity.id} className="p-4" style={{ border: '2px solid var(--accent)', background: 'var(--card)' }}>
-                <div className="flex justify-between items-start mb-1">
-                  <h3 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>{activity.name}</h3>
-                  <span className="text-xs px-2 py-1 rounded-full font-bold" style={{ background: 'var(--accent)', color: '#f5f0e8' }}>
-                    ★ Promoted
-                  </span>
-                </div>
+                <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--foreground)' }}>{activity.name}</h3>
                 {activity.description && (
                   <p className="text-sm mb-2" style={{ color: 'var(--foreground)' }}>{activity.description}</p>
                 )}
