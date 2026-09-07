@@ -26,6 +26,6 @@ export async function proxy(request: NextRequest) {
   return NextResponse.redirect(new URL('/', request.url));
 }
 
-export const proxyConfig = {
+export const config = {
   matcher: ['/cabins', '/flights', '/expenses', '/activities', '/todos', '/packing', '/trivia', '/trivia/:path*'],
 };
