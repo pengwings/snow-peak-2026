@@ -64,10 +64,12 @@ async function init() {
       name TEXT,
       description TEXT DEFAULT '',
       proposer TEXT,
-      votes JSONB DEFAULT '[]'
+      votes JSONB DEFAULT '[]',
+      promoted BOOLEAN DEFAULT false
     );
   `;
   await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';`;
+  await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS promoted BOOLEAN DEFAULT false;`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS todos (

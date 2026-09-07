@@ -33,6 +33,10 @@ function formatDateTime(dateTimeStr: string): string {
 export default function FlightsPage() {
   const [flights, setFlights] = useState<Flight[]>([]);
   const [user, setUser] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [users, setUsers] = useState<string[]>([]);
+  // Admin: which member's flight the form is editing ('' = yourself)
+  const [targetUser, setTargetUser] = useState('');
 
   const [departureAirport, setDepartureAirport] = useState('');
   const [arrivalAirport, setArrivalAirport] = useState('');
@@ -52,10 +56,18 @@ export default function FlightsPage() {
           router.push('/login');
         } else {
           setUser(data.user);
+          setIsAdmin(data.isAdmin);
         }
       });
 
-    fetchFlights();
+    fetch('/api/flights')
+      .then((res) => res.json())
+      .then(setFlights);
+
+    fetch('/api/users')
+      .then((r) => r.json())
+      .then((data: { name: string }[]) => setUsers(data.map((u) => u.name)))
+      .catch(() => {}); // non-fatal
   }, [router]);
 
   const fetchFlights = async () => {
@@ -64,13 +76,20 @@ export default function FlightsPage() {
     setFlights(data);
   };
 
-  const userArrivingFlight = flights.find(f => f.user === user && f.flightType === 'arriving');
-  const userDepartingFlight = flights.find(f => f.user === user && f.flightType === 'departing');
+  // Whose flight the form manages: admins can pick any member, everyone else themselves
+  const target = isAdmin && targetUser ? targetUser : user;
 
-  // Populate form when flight type changes
-  useEffect(() => {
-    const existingFlight = flightType === 'arriving' ? userArrivingFlight : userDepartingFlight;
+  const userArrivingFlight = flights.find(f => f.user === target && f.flightType === 'arriving');
+  const userDepartingFlight = flights.find(f => f.user === target && f.flightType === 'departing');
 
+  // Prefill the form from the selected member's existing flight, re-running when
+  // the passenger or flight type changes (state adjusted during render, per
+  // react.dev/learn/you-might-not-need-an-effect)
+  const existingFlight = flightType === 'arriving' ? userArrivingFlight : userDepartingFlight;
+  const prefillKey = `${target ?? ''}|${flightType}|${existingFlight?.id ?? ''}`;
+  const [lastPrefillKey, setLastPrefillKey] = useState('');
+  if (prefillKey !== lastPrefillKey) {
+    setLastPrefillKey(prefillKey);
     if (existingFlight) {
       setDepartureAirport(existingFlight.departureAirport);
       setArrivalAirport(existingFlight.arrivalAirport);
@@ -86,7 +105,7 @@ export default function FlightsPage() {
       setDepartureTime('');
       setFlightNumber('');
     }
-  }, [flightType, userArrivingFlight, userDepartingFlight]);
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,6 +119,7 @@ export default function FlightsPage() {
         departureTime,
         flightNumber,
         flightType,
+        forUser: target,
       }),
     });
 
@@ -122,9 +142,23 @@ export default function FlightsPage() {
 
       <div className="mb-8 p-6" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
         <h2 className="text-lg font-medium mb-4" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>
-          Add or Update Your Flight
+          {isAdmin ? 'Add or Update a Flight' : 'Add or Update Your Flight'}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {isAdmin && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Passenger</label>
+              <select
+                className="w-full md:w-64 border-gray-300 rounded-md shadow-sm border px-3 py-2 text-gray-900"
+                value={target ?? ''}
+                onChange={(e) => setTargetUser(e.target.value)}
+              >
+                {users.map((u) => (
+                  <option key={u} value={u}>{displayName(u)}{u === user ? ' (You)' : ''}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">Flight Type</label>
             <div className="flex gap-6">
@@ -217,7 +251,7 @@ export default function FlightsPage() {
         </form>
       </div>
 
-      <h2 className="text-2xl font-normal mb-6" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Everyone's Flights</h2>
+      <h2 className="text-2xl font-normal mb-6" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Everyone&apos;s Flights</h2>
 
       {flights.length === 0 ? (
         <p className="text-gray-500 italic">No flights added yet.</p>

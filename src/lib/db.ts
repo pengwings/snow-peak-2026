@@ -35,6 +35,7 @@ export type Activity = {
   description: string;
   proposer: string;
   votes: string[];
+  promoted: boolean;
 };
 
 export type Todo = {
@@ -169,16 +170,18 @@ export const db = {
     const rows = await sql`SELECT * FROM activities`;
     return rows.map((r: any) => ({
       ...r,
-      votes: typeof r.votes === 'string' ? JSON.parse(r.votes) : (r.votes || [])
+      votes: typeof r.votes === 'string' ? JSON.parse(r.votes) : (r.votes || []),
+      promoted: !!r.promoted
     }));
   },
   async addActivity(activity: Activity) {
-    await sql`INSERT INTO activities (id, name, description, proposer, votes)
-              VALUES (${activity.id}, ${activity.name}, ${activity.description}, ${activity.proposer}, ${JSON.stringify(activity.votes)}::jsonb)`;
+    await sql`INSERT INTO activities (id, name, description, proposer, votes, promoted)
+              VALUES (${activity.id}, ${activity.name}, ${activity.description}, ${activity.proposer}, ${JSON.stringify(activity.votes)}::jsonb, ${activity.promoted})`;
   },
   async updateActivity(activity: Activity) {
-    await sql`UPDATE activities 
-              SET votes = ${JSON.stringify(activity.votes)}::jsonb 
+    await sql`UPDATE activities
+              SET name = ${activity.name}, description = ${activity.description},
+                  votes = ${JSON.stringify(activity.votes)}::jsonb, promoted = ${activity.promoted}
               WHERE id = ${activity.id}`;
   },
 

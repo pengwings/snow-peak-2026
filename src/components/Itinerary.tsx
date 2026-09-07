@@ -30,6 +30,7 @@ type Positioned = {
   height: number;
   leftPct: number;
   widthPct: number;
+  stack: number; // later overlapping events render above earlier ones
 };
 
 // Google-Calendar-style layout: overlapping events share the column width
@@ -43,12 +44,17 @@ function layoutDay(events: ScheduleItem[], gridStartMin: number): Positioned[] {
   const flush = () => {
     const lanes = Math.max(...cluster.map((c) => c.lane)) + 1;
     for (const c of cluster) {
+      // Two overlapping events split the column; three or more cascade with
+      // partial overlap so each block stays wide enough to read
+      const widthPct = lanes <= 2 ? 100 / lanes : 55;
+      const leftPct = lanes <= 2 ? (c.lane * 100) / lanes : (c.lane * (100 - widthPct)) / (lanes - 1);
       result.push({
         item: c.item,
         top: ((c.start - gridStartMin) / 60) * HOUR_PX,
         height: Math.max(((c.end - c.start) / 60) * HOUR_PX - 2, 22),
-        leftPct: (c.lane * 100) / lanes,
-        widthPct: 100 / lanes,
+        leftPct,
+        widthPct,
+        stack: c.lane,
       });
     }
     cluster = [];
@@ -219,6 +225,8 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
     background: '#e8e0d0',
     borderLeft: '3px solid var(--accent)',
     color: '#1a1a1a',
+    // hairline ring so overlapping blocks of the same color stay distinguishable
+    boxShadow: '0 0 0 1px var(--card)',
   };
 
   return (
@@ -390,17 +398,21 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
                 }}
                 onClick={(e) => handleGridClick(d, e, gridStartMin)}
               >
-                {layoutDay(timed.filter((i) => i.day === d), gridStartMin).map(({ item, top, height, leftPct, widthPct }) => (
+                {layoutDay(timed.filter((i) => i.day === d), gridStartMin).map(({ item, top, height, leftPct, widthPct, stack }) => (
                   <div
                     key={item.id}
-                    className="group absolute overflow-hidden px-1.5 py-0.5 text-xs cursor-pointer"
+                    className="group absolute overflow-hidden px-1.5 py-0.5 text-xs cursor-pointer hover:z-20"
                     style={{
                       ...eventBlockStyle,
                       top,
                       height,
                       left: `${leftPct}%`,
                       width: `calc(${widthPct}% - 3px)`,
-                      ...(frontId === item.id && { zIndex: 10, boxShadow: '0 1px 5px rgba(0, 0, 0, 0.3)' }),
+                      zIndex: stack,
+                      ...(frontId === item.id && {
+                        zIndex: 30,
+                        boxShadow: '0 0 0 1px var(--card), 0 1px 5px rgba(0, 0, 0, 0.3)',
+                      }),
                     }}
                     title={`${formatTime(item.time)}${item.endTime ? `–${formatTime(item.endTime)}` : ''} ${item.title}${item.description ? ` — ${item.description}` : ''}`}
                     onClick={(e) => { e.stopPropagation(); setFrontId(item.id); openPopout(item, e); }}

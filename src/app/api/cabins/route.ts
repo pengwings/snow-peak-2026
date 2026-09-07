@@ -1,21 +1,31 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { cookies } from 'next/headers';
+import { getSessionUser } from '@/lib/auth';
 
 export async function GET() {
   return NextResponse.json(await db.getCabins());
 }
 
 export async function POST(request: Request) {
-  const cookieStore = await cookies();
-  const userCookie = cookieStore.get('user');
-  const user = userCookie?.value;
+  const sessionUser = await getSessionUser();
 
-  if (!user) {
+  if (!sessionUser) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { cabinId } = await request.json();
+  const { cabinId, forUser } = await request.json();
+
+  // Admins may move other trip members in and out of cabins
+  let user = sessionUser.name;
+  if (forUser && forUser !== sessionUser.name) {
+    if (!sessionUser.isAdmin) {
+      return NextResponse.json({ error: "Only a trip admin can change another member's cabin" }, { status: 403 });
+    }
+    if (!(await db.getUser(forUser))) {
+      return NextResponse.json({ error: 'Unknown user' }, { status: 400 });
+    }
+    user = forUser;
+  }
 
   // Remove user from any existing cabin
   const allCabins = await db.getCabins();

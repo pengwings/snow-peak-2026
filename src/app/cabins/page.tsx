@@ -8,6 +8,8 @@ import { displayName } from '@/lib/displayName';
 export default function CabinsPage() {
   const [cabins, setCabins] = useState<Cabin[]>([]);
   const [user, setUser] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [users, setUsers] = useState<string[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -18,10 +20,18 @@ export default function CabinsPage() {
           router.push('/login');
         } else {
           setUser(data.user);
+          setIsAdmin(data.isAdmin);
         }
       });
 
-    fetchCabins();
+    fetch('/api/cabins')
+      .then((res) => res.json())
+      .then(setCabins);
+
+    fetch('/api/users')
+      .then((r) => r.json())
+      .then((data: { name: string }[]) => setUsers(data.map((u) => u.name)))
+      .catch(() => {}); // non-fatal
   }, [router]);
 
   const fetchCabins = async () => {
@@ -30,11 +40,12 @@ export default function CabinsPage() {
     setCabins(data);
   };
 
-  const handleAssign = async (cabinId: string | null) => {
+  // forUser lets an admin move another member; omitted, it acts on yourself
+  const handleAssign = async (cabinId: string | null, forUser?: string) => {
     await fetch('/api/cabins', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cabinId }),
+      body: JSON.stringify({ cabinId, ...(forUser ? { forUser } : {}) }),
     });
     fetchCabins();
   };
@@ -207,13 +218,34 @@ export default function CabinsPage() {
                         <span className={`w-2.5 h-2.5 rounded-full mr-3 ${occ === user ? 'bg-blue-500' : 'bg-green-500'
                           }`}></span>
                         {displayName(occ)} {occ === user && <span className="ml-1 text-blue-600 text-sm">(You)</span>}
+                        {isAdmin && occ !== user && (
+                          <button
+                            onClick={() => handleAssign(null, occ)}
+                            className="ml-auto text-xs text-red-400 hover:text-red-600 px-2 py-0.5"
+                            title={`Remove ${displayName(occ)} from ${cabin.name}`}
+                          >
+                            Remove
+                          </button>
+                        )}
                       </li>
                     ))}
                   </ul>
                 )}
               </div>
 
-              <div className="mt-4 pt-4 border-t">
+              <div className="mt-4 pt-4 border-t space-y-2">
+                {isAdmin && !isFull && (
+                  <select
+                    className="w-full py-2 px-2 text-sm border-gray-300 rounded-md border text-gray-700"
+                    value=""
+                    onChange={(e) => e.target.value && handleAssign(cabin.id, e.target.value)}
+                  >
+                    <option value="">Add person…</option>
+                    {users.filter((u) => !cabin.occupants.includes(u)).map((u) => (
+                      <option key={u} value={u}>{displayName(u)}{u === user ? ' (You)' : ''}</option>
+                    ))}
+                  </select>
+                )}
                 {isOccupant ? (
                   <button
                     onClick={() => handleAssign(null)}
