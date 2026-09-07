@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { HomeIcon as Cabin, Plane, ShoppingCart, Activity, CheckSquare, Luggage } from 'lucide-react';
+import { HomeIcon as Cabin, Plane, ShoppingCart, Activity, CheckSquare, Luggage, Trophy } from 'lucide-react';
 import { displayName } from '@/lib/displayName';
 
 export default function Navbar() {
@@ -32,7 +32,8 @@ export default function Navbar() {
     return () => window.removeEventListener('tabs-changed', fetchTabs);
   }, [pathname]);
 
-  if (pathname === '/login') return null;
+  // The projector view wants the whole screen to itself.
+  if (pathname === '/login' || pathname === '/trivia/board') return null;
 
   const handleLogout = async () => {
     await fetch('/api/logout', { method: 'POST' });
@@ -73,6 +74,7 @@ export default function Navbar() {
     { href: '/activities', label: 'Activities', icon: Activity },
     { href: '/todos', label: 'Todos', icon: CheckSquare },
     { href: '/packing', label: 'Packing', icon: Luggage },
+    { href: '/trivia', label: 'Trivia', icon: Trophy },
   ];
 
   // Admins in admin mode see every tab (hidden ones dimmed); everyone else
@@ -81,7 +83,7 @@ export default function Navbar() {
 
   const renderLink = (link: (typeof navLinks)[number], mobile: boolean) => {
     const Icon = link.icon;
-    const isActive = pathname === link.href;
+    const isActive = pathname === link.href || pathname.startsWith(link.href + '/');
     const isHidden = hiddenTabs.includes(link.href);
     return (
       <Link

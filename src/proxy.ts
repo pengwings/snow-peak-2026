@@ -10,9 +10,11 @@ import { ADMIN_MODE_COOKIE, isAdminModeOn } from '@/lib/adminMode';
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  // Sub-pages (e.g. /trivia/host) are hidden along with their tab.
+  const tab = '/' + pathname.split('/')[1];
 
   const hiddenTabs = await db.getHiddenTabs();
-  if (!hiddenTabs.includes(pathname)) return NextResponse.next();
+  if (!hiddenTabs.includes(tab)) return NextResponse.next();
 
   const name = request.cookies.get('user')?.value;
   const adminModeOn = isAdminModeOn(request.cookies.get(ADMIN_MODE_COOKIE)?.value);
@@ -25,5 +27,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const proxyConfig = {
-  matcher: ['/cabins', '/flights', '/expenses', '/activities', '/todos', '/packing'],
+  matcher: ['/cabins', '/flights', '/expenses', '/activities', '/todos', '/packing', '/trivia', '/trivia/:path*'],
 };

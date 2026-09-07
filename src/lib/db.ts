@@ -66,6 +66,53 @@ export type PackingItem = {
   assignee: string | null;
 };
 
+
+export type TriviaFacts = {
+  username: string;
+  hobby: string;
+  selfFacts: string[];
+  hobbyFacts: string[];
+  updatedAt: string | null;
+};
+
+export type TriviaQuestion = {
+  id: string;
+  position: number;
+  text: string;
+  options: string[];
+  correctIndex: number;
+  /** Optional: the person this question is about (shown on the reveal). */
+  about: string | null;
+};
+
+export type TriviaAnswer = {
+  questionId: string;
+  username: string;
+  choice: number;
+  elapsedMs: number;
+};
+
+export type TriviaPhase = 'idle' | 'lobby' | 'question' | 'reveal' | 'leaderboard' | 'finished';
+
+export type TriviaGameState = {
+  phase: TriviaPhase;
+  questionId: string | null;
+  /** ISO timestamp of when the current question was shown. */
+  startedAt: string | null;
+};
+
+const TRIVIA_GAME_KEY = 'trivia_game';
+const TRIVIA_FACTS_OPEN_KEY = 'trivia_facts_open';
+const DEFAULT_GAME_STATE: TriviaGameState = { phase: 'idle', questionId: null, startedAt: null };
+
+function parseJson<T>(value: unknown, fallback: T): T {
+  if (value == null) return fallback;
+  if (typeof value === 'string') {
+    try { return JSON.parse(value) as T; } catch { return fallback; }
+  }
+  return value as T;
+}
+
 import { sql } from './db-client';
 
 export const db = {
@@ -245,5 +292,119 @@ export const db = {
   },
   async removePackingItem(itemId: string) {
     await sql`DELETE FROM packing_items WHERE id = ${itemId}`;
-  }
+  },
+
+  // ---- Trivia: facts ----
+  async getTriviaFacts(username: string): Promise<TriviaFacts | null> {
+    const rows = await sql`SELECT * FROM trivia_facts WHERE username = ${username}`;
+    return rows.length ? mapTriviaFacts(rows[0]) : null;
+  },
+  async getAllTriviaFacts(): Promise<TriviaFacts[]> {
+    const rows = await sql`SELECT * FROM trivia_facts ORDER BY lower(username)`;
+    return rows.map(mapTriviaFacts);
+  },
+  async saveTriviaFacts(facts: TriviaFacts) {
+    await sql`INSERT INTO trivia_facts (username, hobby, self_facts, hobby_facts, updated_at)
+              VALUES (${facts.username}, ${facts.hobby}, ${JSON.stringify(facts.selfFacts)}::jsonb, ${JSON.stringify(facts.hobbyFacts)}::jsonb, now())
+              ON CONFLICT (username) DO UPDATE
+              SET hobby = EXCLUDED.hobby, self_facts = EXCLUDED.self_facts, hobby_facts = EXCLUDED.hobby_facts, updated_at = now()`;
+  },
+  async deleteTriviaFacts(username: string) {
+    await sql`DELETE FROM trivia_facts WHERE username = ${username}`;
+  },
+  async getTriviaFactsOpen(): Promise<boolean> {
+    const rows = await sql`SELECT value FROM app_settings WHERE key = ${TRIVIA_FACTS_OPEN_KEY}`;
+    if (!rows.length) return true;
+    return parseJson<boolean>(rows[0].value, true);
+  },
+  async setTriviaFactsOpen(open: boolean) {
+    await sql`INSERT INTO app_settings (key, value) VALUES (${TRIVIA_FACTS_OPEN_KEY}, ${JSON.stringify(open)}::jsonb)
+              ON CONFLICT (key) DO UPDATE SET value = ${JSON.stringify(open)}::jsonb`;
+  },
+
+  // ---- Trivia: questions ----
+  async getTriviaQuestions(): Promise<TriviaQuestion[]> {
+    const rows = await sql`SELECT * FROM trivia_questions ORDER BY position, id`;
+    return rows.map(mapTriviaQuestion);
+  },
+  async addTriviaQuestion(q: TriviaQuestion) {
+    await sql`INSERT INTO trivia_questions (id, position, text, options, correct_index, about)
+              VALUES (${q.id}, ${q.position}, ${q.text}, ${JSON.stringify(q.options)}::jsonb, ${q.correctIndex}, ${q.about})`;
+  },
+  async updateTriviaQuestion(q: TriviaQuestion) {
+    await sql`UPDATE trivia_questions
+              SET position = ${q.position}, text = ${q.text}, options = ${JSON.stringify(q.options)}::jsonb,
+                  correct_index = ${q.correctIndex}, about = ${q.about}
+              WHERE id = ${q.id}`;
+  },
+  async removeAllTriviaQuestions() {
+    await sql`DELETE FROM trivia_questions`;
+    await sql`DELETE FROM trivia_answers`;
+  },
+  async removeTriviaQuestion(id: string) {
+    await sql`DELETE FROM trivia_questions WHERE id = ${id}`;
+    await sql`DELETE FROM trivia_answers WHERE question_id = ${id}`;
+  },
+
+  // ---- Trivia: game state ----
+  async getTriviaGameState(): Promise<TriviaGameState> {
+    const rows = await sql`SELECT value FROM app_settings WHERE key = ${TRIVIA_GAME_KEY}`;
+    if (!rows.length) return { ...DEFAULT_GAME_STATE };
+    return { ...DEFAULT_GAME_STATE, ...parseJson<Partial<TriviaGameState>>(rows[0].value, {}) };
+  },
+  async setTriviaGameState(state: TriviaGameState) {
+    await sql`INSERT INTO app_settings (key, value) VALUES (${TRIVIA_GAME_KEY}, ${JSON.stringify(state)}::jsonb)
+              ON CONFLICT (key) DO UPDATE SET value = ${JSON.stringify(state)}::jsonb`;
+  },
+
+  // ---- Trivia: answers & players ----
+  async getTriviaAnswers(): Promise<TriviaAnswer[]> {
+    const rows = await sql`SELECT * FROM trivia_answers`;
+    return rows.map((r: any) => ({
+      questionId: r.question_id,
+      username: r.username,
+      choice: r.choice,
+      elapsedMs: r.elapsed_ms,
+    }));
+  },
+  /** First answer wins: a second tap on a different option is ignored. */
+  async addTriviaAnswer(answer: TriviaAnswer) {
+    await sql`INSERT INTO trivia_answers (question_id, username, choice, elapsed_ms)
+              VALUES (${answer.questionId}, ${answer.username}, ${answer.choice}, ${answer.elapsedMs})
+              ON CONFLICT (question_id, username) DO NOTHING`;
+  },
+  async clearTriviaAnswers() {
+    await sql`DELETE FROM trivia_answers`;
+  },
+  async getTriviaPlayers(): Promise<string[]> {
+    const rows = await sql`SELECT username FROM trivia_players ORDER BY joined_at`;
+    return rows.map((r: any) => r.username);
+  },
+  async addTriviaPlayer(username: string) {
+    await sql`INSERT INTO trivia_players (username) VALUES (${username}) ON CONFLICT DO NOTHING`;
+  },
+  async clearTriviaPlayers() {
+    await sql`DELETE FROM trivia_players`;
+  },
 };
+
+function mapTriviaFacts(r: any): TriviaFacts {
+  return {
+    username: r.username,
+    hobby: r.hobby ?? '',
+    selfFacts: parseJson<string[]>(r.self_facts, []),
+    hobbyFacts: parseJson<string[]>(r.hobby_facts, []),
+    updatedAt: r.updated_at instanceof Date ? r.updated_at.toISOString() : (r.updated_at ?? null),
+  };
+}
+
+function mapTriviaQuestion(r: any): TriviaQuestion {
+  return {
+    id: r.id,
+    position: r.position ?? 0,
+    text: r.text,
+    options: parseJson<string[]>(r.options, []),
+    correctIndex: r.correct_index ?? 0,
+    about: r.about ?? null,
+  };
+}

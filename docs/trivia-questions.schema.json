@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://snow-peak-2026/trivia-questions.schema.json",
+  "title": "Snow Peak trivia questions",
+  "description": "A list of multiple-choice trivia questions for import on the Trivia > Questions page, as JSON. The root may be either a bare array of questions or an object with a `questions` array.",
+  "oneOf": [
+    {
+      "$ref": "#/definitions/questionList"
+    },
+    {
+      "type": "object",
+      "required": [
+        "questions"
+      ],
+      "properties": {
+        "questions": {
+          "$ref": "#/definitions/questionList"
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "questionList": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/question"
+      }
+    },
+    "question": {
+      "type": "object",
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The question as shown on the projector and phones."
+        },
+        "options": {
+          "description": "Either a list of 2\u201320 answer choices, or the string \"players\" to use every guest's name as the choices (a \"who said this?\" question). Defaults to \"players\" when omitted.",
+          "oneOf": [
+            {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 20,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            {
+              "type": "string",
+              "enum": [
+                "players"
+              ]
+            }
+          ]
+        },
+        "answer": {
+          "description": "The correct choice: the option text (case-insensitive) or its 0-based index. Required unless options is \"players\", where it defaults to `about`.",
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "integer",
+              "minimum": 0
+            }
+          ]
+        },
+        "about": {
+          "type": "string",
+          "description": "Name of the guest this question is about. Shown on the reveal. Required when options is \"players\"."
+        }
+      }
+    }
+  }
+}

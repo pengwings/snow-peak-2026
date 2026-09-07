@@ -116,6 +116,44 @@ async function init() {
   `;
   await sql`ALTER TABLE packing_items ADD COLUMN IF NOT EXISTS personal BOOLEAN DEFAULT false;`;
 
+  // Trivia: fact submissions (one row per user), authored questions,
+  // per-question answers, and the set of players who joined the current game.
+  await sql`
+    CREATE TABLE IF NOT EXISTS trivia_facts (
+      username TEXT PRIMARY KEY,
+      hobby TEXT DEFAULT '',
+      self_facts JSONB DEFAULT '[]',
+      hobby_facts JSONB DEFAULT '[]',
+      updated_at TIMESTAMPTZ DEFAULT now()
+    );
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS trivia_questions (
+      id TEXT PRIMARY KEY,
+      position INTEGER NOT NULL DEFAULT 0,
+      text TEXT NOT NULL,
+      options JSONB DEFAULT '[]',
+      correct_index INTEGER NOT NULL DEFAULT 0,
+      about TEXT
+    );
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS trivia_answers (
+      question_id TEXT NOT NULL,
+      username TEXT NOT NULL,
+      choice INTEGER NOT NULL,
+      elapsed_ms INTEGER NOT NULL DEFAULT 0,
+      answered_at TIMESTAMPTZ DEFAULT now(),
+      PRIMARY KEY (question_id, username)
+    );
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS trivia_players (
+      username TEXT PRIMARY KEY,
+      joined_at TIMESTAMPTZ DEFAULT now()
+    );
+  `;
+
   // Seed the campground-provided items if none exist yet
   const providedCount = await sql`SELECT count(*) FROM packing_items WHERE provided = true`;
   if (parseInt(providedCount[0].count) === 0) {
