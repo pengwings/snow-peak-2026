@@ -27,7 +27,9 @@ export default function TodosPage() {
         }
       });
 
-    fetchTodos();
+    fetch('/api/todos')
+      .then((res) => res.json())
+      .then(setTodos);
     // Fetch user list for assignee dropdown
     fetch('/api/users')
       .then((r) => r.json())

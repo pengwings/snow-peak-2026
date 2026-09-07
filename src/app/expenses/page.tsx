@@ -20,6 +20,12 @@ export default function ExpensesPage() {
 
   const router = useRouter();
 
+  const fetchExpenses = async () => {
+    const res = await fetch('/api/expenses');
+    const data = await res.json();
+    setExpenses(data);
+  };
+
   useEffect(() => {
     fetch('/api/me')
       .then((res) => res.json())
@@ -30,23 +36,19 @@ export default function ExpensesPage() {
           setUser(data.user);
         }
       });
-    fetchExpenses();
-    fetchUsers();
+
+    fetch('/api/expenses')
+      .then((res) => res.json())
+      .then(setExpenses);
+
+    fetch('/api/users')
+      .then((res) => res.json())
+      .then((data: { name: string }[]) => {
+        const names = data.map((u) => u.name);
+        setUsers(names);
+        setNewExpenseParticipants(names);
+      });
   }, [router]);
-
-  const fetchExpenses = async () => {
-    const res = await fetch('/api/expenses');
-    const data = await res.json();
-    setExpenses(data);
-  };
-
-  const fetchUsers = async () => {
-    const res = await fetch('/api/users');
-    const data = await res.json();
-    const names = data.map((u: { name: string }) => u.name);
-    setUsers(names);
-    setNewExpenseParticipants(names);
-  };
 
   const handleUpdate = async (expenseId: string, field: 'name' | 'buyer' | 'amountPaid') => {
     const value = editingExpense[expenseId]?.[field];
@@ -60,6 +62,15 @@ export default function ExpensesPage() {
       }),
     });
     setEditingExpense({ ...editingExpense, [expenseId]: { ...editingExpense[expenseId], [field]: undefined } });
+    fetchExpenses();
+  };
+
+  const handleToggleSettled = async (expense: Expense) => {
+    await fetch('/api/expenses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expenseId: expense.id, action: 'update', settled: !expense.settled }),
+    });
     fetchExpenses();
   };
 
@@ -131,8 +142,9 @@ export default function ExpensesPage() {
   // Per-person totals: what they paid vs their share of what they participated in
   const paidBy = new Map<string, number>();
   const shareOf = new Map<string, number>();
+  const unsettledCount = expenses.filter((e) => !e.settled).length;
   for (const expense of expenses) {
-    if (!expense.buyer || !expense.amountPaid) continue;
+    if (expense.settled || !expense.buyer || !expense.amountPaid) continue;
     const parts = participantsOf(expense);
     if (parts.length === 0) continue;
     paidBy.set(expense.buyer, (paidBy.get(expense.buyer) || 0) + expense.amountPaid);
@@ -272,6 +284,7 @@ export default function ExpensesPage() {
               <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Buyer</th>
               <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Amount</th>
               <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Split</th>
+              <th className="px-3 sm:px-6 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Settled</th>
               <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Actions</th>
             </tr>
           </thead>
@@ -283,7 +296,7 @@ export default function ExpensesPage() {
               const isEditingSplit = editingSplitId === expense.id;
 
               return (
-                <tr key={expense.id} style={{ borderBottom: i < expenses.length - 1 ? '1px solid var(--border)' : 'none', background: 'var(--card)' }}>
+                <tr key={expense.id} style={{ borderBottom: i < expenses.length - 1 ? '1px solid var(--border)' : 'none', background: 'var(--card)', opacity: expense.settled ? 0.55 : 1 }}>
                   <td className="px-3 sm:px-6 py-4 text-sm font-medium" style={{ color: 'var(--foreground)' }}>
                     {isEditingName ? (
                       <div className="flex items-center gap-2">
@@ -436,6 +449,15 @@ export default function ExpensesPage() {
                       </span>
                     )}
                   </td>
+                  <td className="px-3 sm:px-6 py-4 text-sm text-center">
+                    <input
+                      type="checkbox"
+                      checked={expense.settled}
+                      onChange={() => handleToggleSettled(expense)}
+                      title={expense.settled ? 'Mark as unsettled' : 'Mark as settled'}
+                      className="cursor-pointer"
+                    />
+                  </td>
                   <td className="px-3 sm:px-6 py-4 text-sm text-right">
                     <button
                       onClick={() => handleDelete(expense.id, expense.name)}
@@ -453,11 +475,14 @@ export default function ExpensesPage() {
       </div>
 
       {/* Settle up */}
-      <h2 className="text-2xl font-normal mt-12 mb-4" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Who Owes Whom</h2>
+      <h2 className="text-2xl font-normal mt-12 mb-1" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Who Owes Whom</h2>
+      <p className="text-xs mb-4" style={{ color: 'var(--muted)' }}>Expenses marked settled are left out of these balances.</p>
       <div className="mb-8 p-6" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
         {transfers.length === 0 ? (
           <p className="text-sm" style={{ color: 'var(--muted)' }}>
-            {netBalances.length === 0 ? 'Nothing to settle yet — add expenses with a buyer and amount.' : 'Everyone is settled up.'}
+            {netBalances.length === 0
+              ? (unsettledCount === 0 && expenses.length > 0 ? 'All expenses are marked settled.' : 'Nothing to settle yet — add expenses with a buyer and amount.')
+              : 'Everyone is settled up.'}
           </p>
         ) : (
           <ul className="space-y-2">

@@ -28,6 +28,7 @@ export type Expense = {
   buyer: string | null;
   amountPaid: number | null;
   participants: string[]; // empty = split among everyone
+  settled: boolean;
 };
 
 export type Activity = {
@@ -37,6 +38,25 @@ export type Activity = {
   proposer: string;
   votes: string[];
   promoted: boolean;
+};
+
+export type FoodIngredient = {
+  id: string;
+  foodId: string;
+  name: string;
+  purchased: boolean;
+  addedBy: string;
+  assignee: string | null;
+};
+
+export type FoodIdea = {
+  id: string;
+  name: string;
+  description: string;
+  proposer: string;
+  votes: string[];
+  promoted: boolean;
+  ingredients: FoodIngredient[];
 };
 
 export type Todo = {
@@ -101,6 +121,26 @@ export type TriviaGameState = {
   startedAt: string | null;
 };
 
+// Raw row shapes as returned by Postgres (lowercase / snake_case column names).
+type UserRow = { name: string; is_admin: boolean | null };
+type ScheduleItemRow = { id: string; day: string; time: string | null; end_time: string | null; title: string; description: string | null };
+type CabinRow = { id: string; name: string; capacity: number; occupants: unknown };
+type FlightRow = {
+  id: string; username: string; departureairport: string; arrivalairport: string;
+  arrivaltime: Date | string; departuretime: Date | string; flightnumber: string | null;
+  flighttype: Flight['flightType'] | null;
+};
+type ExpenseRow = { id: string; name: string; buyer: string | null; amountpaid: number | null; participants: unknown; settled: boolean | null };
+type ActivityRow = { id: string; name: string; description: string | null; proposer: string; votes: unknown; promoted: boolean | null };
+type FoodIdeaRow = { id: string; name: string; description: string | null; proposer: string; votes: unknown; promoted: boolean | null };
+type FoodIngredientRow = { id: string; food_id: string; name: string; purchased: boolean | null; added_by: string | null; assignee: string | null };
+type TodoRow = { id: string; text: string; completed: boolean; username: string; assignee: string | null };
+type PackingItemRow = { id: string; name: string; provided: boolean; personal: boolean | null; packed: boolean; username: string | null; assignee: string | null };
+type TriviaFactsRow = { username: string; hobby: string | null; self_facts: unknown; hobby_facts: unknown; updated_at: Date | string | null };
+type TriviaQuestionRow = { id: string; position: number | null; text: string; options: unknown; correct_index: number | null; about: string | null };
+type TriviaAnswerRow = { question_id: string; username: string; choice: number; elapsed_ms: number };
+type TriviaPlayerRow = { username: string };
+
 const TRIVIA_GAME_KEY = 'trivia_game';
 const TRIVIA_FACTS_OPEN_KEY = 'trivia_facts_open';
 const DEFAULT_GAME_STATE: TriviaGameState = { phase: 'idle', questionId: null, startedAt: null };
@@ -117,14 +157,14 @@ import { sql } from './db-client';
 
 export const db = {
   async getUsers(): Promise<User[]> {
-    const rows = await sql`SELECT * FROM users`;
-    return rows.map((r: any) => ({
+    const rows = await sql<UserRow>`SELECT * FROM users`;
+    return rows.map((r: UserRow) => ({
       name: r.name,
       isAdmin: !!r.is_admin,
     }));
   },
   async getUser(name: string): Promise<User | null> {
-    const rows = await sql`SELECT * FROM users WHERE name = ${name}`;
+    const rows = await sql<UserRow>`SELECT * FROM users WHERE name = ${name}`;
     return rows.length ? { name: rows[0].name, isAdmin: !!rows[0].is_admin } : null;
   },
   async addUser(name: string) {
@@ -132,19 +172,32 @@ export const db = {
   },
 
   async getHiddenTabs(): Promise<string[]> {
-    const rows = await sql`SELECT value FROM app_settings WHERE key = 'hidden_tabs'`;
+    const rows = await sql<{ value: unknown }>`SELECT value FROM app_settings WHERE key = 'hidden_tabs'`;
     if (!rows.length) return [];
-    const value = rows[0].value;
-    return typeof value === 'string' ? JSON.parse(value) : (value || []);
+    return parseJson<string[]>(rows[0].value, []);
   },
   async setHiddenTabs(tabs: string[]) {
     await sql`INSERT INTO app_settings (key, value) VALUES ('hidden_tabs', ${JSON.stringify(tabs)}::jsonb)
               ON CONFLICT (key) DO UPDATE SET value = ${JSON.stringify(tabs)}::jsonb`;
   },
 
+  // The Google My Maps id shown on the /map tab. Null until an admin sets one.
+  // Stored as { mid } rather than a bare JSON string: the pg driver hands JSONB
+  // back already parsed, and parseJson would try to JSON.parse a bare string.
+  async getMapId(): Promise<string | null> {
+    const rows = await sql<{ value: unknown }>`SELECT value FROM app_settings WHERE key = 'my_maps_id'`;
+    if (!rows.length) return null;
+    return parseJson<{ mid: string | null }>(rows[0].value, { mid: null }).mid ?? null;
+  },
+  async setMapId(mid: string | null) {
+    const value = JSON.stringify({ mid });
+    await sql`INSERT INTO app_settings (key, value) VALUES ('my_maps_id', ${value}::jsonb)
+              ON CONFLICT (key) DO UPDATE SET value = ${value}::jsonb`;
+  },
+
   async getScheduleItems(): Promise<ScheduleItem[]> {
-    const rows = await sql`SELECT * FROM schedule_items ORDER BY day, time`;
-    return rows.map((r: any) => ({
+    const rows = await sql<ScheduleItemRow>`SELECT * FROM schedule_items ORDER BY day, time`;
+    return rows.map((r: ScheduleItemRow) => ({
       id: r.id,
       day: r.day,
       time: r.time ?? '',
@@ -167,10 +220,12 @@ export const db = {
   },
 
   async getCabins(): Promise<Cabin[]> {
-    const rows = await sql`SELECT * FROM cabins ORDER BY id::integer`;
-    return rows.map((r: any) => ({
-      ...r,
-      occupants: typeof r.occupants === 'string' ? JSON.parse(r.occupants) : (r.occupants || [])
+    const rows = await sql<CabinRow>`SELECT * FROM cabins ORDER BY id::integer`;
+    return rows.map((r: CabinRow) => ({
+      id: r.id,
+      name: r.name,
+      capacity: r.capacity,
+      occupants: parseJson<string[]>(r.occupants, []),
     }));
   },
   async updateCabin(cabin: Cabin) {
@@ -180,15 +235,15 @@ export const db = {
   },
 
   async getFlights(): Promise<Flight[]> {
-    const rows = await sql`SELECT * FROM flights`;
-    return rows.map((r: any) => ({
+    const rows = await sql<FlightRow>`SELECT * FROM flights`;
+    return rows.map((r: FlightRow) => ({
       id: r.id,
       user: r.username,
       departureAirport: r.departureairport,
       arrivalAirport: r.arrivalairport,
       arrivalTime: r.arrivaltime instanceof Date ? r.arrivaltime.toISOString() : r.arrivaltime,
       departureTime: r.departuretime instanceof Date ? r.departuretime.toISOString() : r.departuretime,
-      flightNumber: r.flightnumber,
+      flightNumber: r.flightnumber ?? undefined,
       flightType: r.flighttype || 'arriving',
     }));
   },
@@ -204,23 +259,24 @@ export const db = {
   },
 
   async getExpenses(): Promise<Expense[]> {
-    const rows = await sql`SELECT * FROM expenses`;
-    return rows.map((r: any) => ({
+    const rows = await sql<ExpenseRow>`SELECT * FROM expenses`;
+    return rows.map((r: ExpenseRow) => ({
       id: r.id,
       name: r.name,
       buyer: r.buyer,
       amountPaid: r.amountpaid,
-      participants: typeof r.participants === 'string' ? JSON.parse(r.participants) : (r.participants || [])
+      participants: parseJson<string[]>(r.participants, []),
+      settled: !!r.settled,
     }));
   },
   async addExpense(expense: Expense) {
-    await sql`INSERT INTO expenses (id, name, buyer, amountpaid, participants)
-              VALUES (${expense.id}, ${expense.name}, ${expense.buyer || null}, ${expense.amountPaid || null}, ${JSON.stringify(expense.participants)}::jsonb)`;
+    await sql`INSERT INTO expenses (id, name, buyer, amountpaid, participants, settled)
+              VALUES (${expense.id}, ${expense.name}, ${expense.buyer || null}, ${expense.amountPaid || null}, ${JSON.stringify(expense.participants)}::jsonb, ${expense.settled})`;
   },
   async updateExpense(expense: Expense) {
     await sql`UPDATE expenses
               SET name = ${expense.name}, buyer = ${expense.buyer}, amountpaid = ${expense.amountPaid},
-                  participants = ${JSON.stringify(expense.participants)}::jsonb
+                  participants = ${JSON.stringify(expense.participants)}::jsonb, settled = ${expense.settled}
               WHERE id = ${expense.id}`;
   },
   async removeExpense(expenseId: string) {
@@ -228,11 +284,14 @@ export const db = {
   },
 
   async getActivities(): Promise<Activity[]> {
-    const rows = await sql`SELECT * FROM activities`;
-    return rows.map((r: any) => ({
-      ...r,
-      votes: typeof r.votes === 'string' ? JSON.parse(r.votes) : (r.votes || []),
-      promoted: !!r.promoted
+    const rows = await sql<ActivityRow>`SELECT * FROM activities`;
+    return rows.map((r: ActivityRow) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description ?? '',
+      proposer: r.proposer,
+      votes: parseJson<string[]>(r.votes, []),
+      promoted: !!r.promoted,
     }));
   },
   async addActivity(activity: Activity) {
@@ -246,9 +305,57 @@ export const db = {
               WHERE id = ${activity.id}`;
   },
 
+  // ---- Food ideas & ingredient checklists ----
+  async getFoodIdeas(): Promise<FoodIdea[]> {
+    const rows = await sql<FoodIdeaRow>`SELECT * FROM food_ideas ORDER BY created_at, id`;
+    const ingredientRows = await sql<FoodIngredientRow>`SELECT * FROM food_ingredients ORDER BY created_at, id`;
+    const byFood = new Map<string, FoodIngredient[]>();
+    for (const r of ingredientRows) {
+      const ing = mapFoodIngredient(r);
+      const list = byFood.get(ing.foodId) ?? [];
+      list.push(ing);
+      byFood.set(ing.foodId, list);
+    }
+    return rows.map((r: FoodIdeaRow) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description ?? '',
+      proposer: r.proposer,
+      votes: parseJson<string[]>(r.votes, []),
+      promoted: !!r.promoted,
+      ingredients: byFood.get(r.id) ?? [],
+    }));
+  },
+  async addFoodIdea(idea: Omit<FoodIdea, 'ingredients'>) {
+    await sql`INSERT INTO food_ideas (id, name, description, proposer, votes, promoted)
+              VALUES (${idea.id}, ${idea.name}, ${idea.description}, ${idea.proposer}, ${JSON.stringify(idea.votes)}::jsonb, ${idea.promoted})`;
+  },
+  async updateFoodIdea(idea: Omit<FoodIdea, 'ingredients'>) {
+    await sql`UPDATE food_ideas
+              SET name = ${idea.name}, description = ${idea.description},
+                  votes = ${JSON.stringify(idea.votes)}::jsonb, promoted = ${idea.promoted}
+              WHERE id = ${idea.id}`;
+  },
+  async removeFoodIdea(ideaId: string) {
+    await sql`DELETE FROM food_ingredients WHERE food_id = ${ideaId}`;
+    await sql`DELETE FROM food_ideas WHERE id = ${ideaId}`;
+  },
+  async addFoodIngredient(ing: FoodIngredient) {
+    await sql`INSERT INTO food_ingredients (id, food_id, name, purchased, added_by, assignee)
+              VALUES (${ing.id}, ${ing.foodId}, ${ing.name}, ${ing.purchased}, ${ing.addedBy}, ${ing.assignee})`;
+  },
+  async updateFoodIngredient(ing: FoodIngredient) {
+    await sql`UPDATE food_ingredients
+              SET name = ${ing.name}, purchased = ${ing.purchased}, assignee = ${ing.assignee}
+              WHERE id = ${ing.id}`;
+  },
+  async removeFoodIngredient(ingredientId: string) {
+    await sql`DELETE FROM food_ingredients WHERE id = ${ingredientId}`;
+  },
+
   async getTodos(): Promise<Todo[]> {
-    const rows = await sql`SELECT * FROM todos`;
-    return rows.map((r: any) => ({
+    const rows = await sql<TodoRow>`SELECT * FROM todos`;
+    return rows.map((r: TodoRow) => ({
       id: r.id,
       text: r.text,
       completed: r.completed,
@@ -270,8 +377,8 @@ export const db = {
   },
 
   async getPackingItems(): Promise<PackingItem[]> {
-    const rows = await sql`SELECT * FROM packing_items ORDER BY lower(name)`;
-    return rows.map((r: any) => ({
+    const rows = await sql<PackingItemRow>`SELECT * FROM packing_items ORDER BY lower(name)`;
+    return rows.map((r: PackingItemRow) => ({
       id: r.id,
       name: r.name,
       provided: r.provided,
@@ -296,11 +403,11 @@ export const db = {
 
   // ---- Trivia: facts ----
   async getTriviaFacts(username: string): Promise<TriviaFacts | null> {
-    const rows = await sql`SELECT * FROM trivia_facts WHERE username = ${username}`;
+    const rows = await sql<TriviaFactsRow>`SELECT * FROM trivia_facts WHERE username = ${username}`;
     return rows.length ? mapTriviaFacts(rows[0]) : null;
   },
   async getAllTriviaFacts(): Promise<TriviaFacts[]> {
-    const rows = await sql`SELECT * FROM trivia_facts ORDER BY lower(username)`;
+    const rows = await sql<TriviaFactsRow>`SELECT * FROM trivia_facts ORDER BY lower(username)`;
     return rows.map(mapTriviaFacts);
   },
   async saveTriviaFacts(facts: TriviaFacts) {
@@ -313,7 +420,7 @@ export const db = {
     await sql`DELETE FROM trivia_facts WHERE username = ${username}`;
   },
   async getTriviaFactsOpen(): Promise<boolean> {
-    const rows = await sql`SELECT value FROM app_settings WHERE key = ${TRIVIA_FACTS_OPEN_KEY}`;
+    const rows = await sql<{ value: unknown }>`SELECT value FROM app_settings WHERE key = ${TRIVIA_FACTS_OPEN_KEY}`;
     if (!rows.length) return true;
     return parseJson<boolean>(rows[0].value, true);
   },
@@ -324,7 +431,7 @@ export const db = {
 
   // ---- Trivia: questions ----
   async getTriviaQuestions(): Promise<TriviaQuestion[]> {
-    const rows = await sql`SELECT * FROM trivia_questions ORDER BY position, id`;
+    const rows = await sql<TriviaQuestionRow>`SELECT * FROM trivia_questions ORDER BY position, id`;
     return rows.map(mapTriviaQuestion);
   },
   async addTriviaQuestion(q: TriviaQuestion) {
@@ -348,7 +455,7 @@ export const db = {
 
   // ---- Trivia: game state ----
   async getTriviaGameState(): Promise<TriviaGameState> {
-    const rows = await sql`SELECT value FROM app_settings WHERE key = ${TRIVIA_GAME_KEY}`;
+    const rows = await sql<{ value: unknown }>`SELECT value FROM app_settings WHERE key = ${TRIVIA_GAME_KEY}`;
     if (!rows.length) return { ...DEFAULT_GAME_STATE };
     return { ...DEFAULT_GAME_STATE, ...parseJson<Partial<TriviaGameState>>(rows[0].value, {}) };
   },
@@ -359,8 +466,8 @@ export const db = {
 
   // ---- Trivia: answers & players ----
   async getTriviaAnswers(): Promise<TriviaAnswer[]> {
-    const rows = await sql`SELECT * FROM trivia_answers`;
-    return rows.map((r: any) => ({
+    const rows = await sql<TriviaAnswerRow>`SELECT * FROM trivia_answers`;
+    return rows.map((r: TriviaAnswerRow) => ({
       questionId: r.question_id,
       username: r.username,
       choice: r.choice,
@@ -377,8 +484,8 @@ export const db = {
     await sql`DELETE FROM trivia_answers`;
   },
   async getTriviaPlayers(): Promise<string[]> {
-    const rows = await sql`SELECT username FROM trivia_players ORDER BY joined_at`;
-    return rows.map((r: any) => r.username);
+    const rows = await sql<TriviaPlayerRow>`SELECT username FROM trivia_players ORDER BY joined_at`;
+    return rows.map((r: TriviaPlayerRow) => r.username);
   },
   async addTriviaPlayer(username: string) {
     await sql`INSERT INTO trivia_players (username) VALUES (${username}) ON CONFLICT DO NOTHING`;
@@ -388,7 +495,18 @@ export const db = {
   },
 };
 
-function mapTriviaFacts(r: any): TriviaFacts {
+function mapFoodIngredient(r: FoodIngredientRow): FoodIngredient {
+  return {
+    id: r.id,
+    foodId: r.food_id,
+    name: r.name,
+    purchased: !!r.purchased,
+    addedBy: r.added_by ?? '',
+    assignee: r.assignee ?? null,
+  };
+}
+
+function mapTriviaFacts(r: TriviaFactsRow): TriviaFacts {
   return {
     username: r.username,
     hobby: r.hobby ?? '',
@@ -398,7 +516,7 @@ function mapTriviaFacts(r: any): TriviaFacts {
   };
 }
 
-function mapTriviaQuestion(r: any): TriviaQuestion {
+function mapTriviaQuestion(r: TriviaQuestionRow): TriviaQuestion {
   return {
     id: r.id,
     position: r.position ?? 0,

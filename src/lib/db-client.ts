@@ -12,7 +12,9 @@
 import { neon, NeonQueryFunction } from '@neondatabase/serverless';
 import pg from 'pg';
 
-type SqlQuery = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<any[]>;
+/** A result row: column name → value. Pass a row type as the template's type argument, e.g. sql<UserRow>`...`. */
+export type SqlRow = Record<string, unknown>;
+type SqlQuery = <T extends SqlRow = SqlRow>(strings: TemplateStringsArray, ...values: unknown[]) => Promise<T[]>;
 
 function createLocalClient(): SqlQuery {
   let pool: pg.Pool | null = null;
@@ -24,7 +26,7 @@ function createLocalClient(): SqlQuery {
     return pool;
   }
 
-  return async (strings: TemplateStringsArray, ...values: unknown[]): Promise<any[]> => {
+  return async <T extends SqlRow = SqlRow>(strings: TemplateStringsArray, ...values: unknown[]): Promise<T[]> => {
     let text = '';
     strings.forEach((str, i) => {
       text += str;
@@ -32,7 +34,7 @@ function createLocalClient(): SqlQuery {
     });
     const client = await getPool().connect();
     try {
-      const result = await client.query(text, values as any[]);
+      const result = await client.query<T>(text, values);
       return result.rows;
     } finally {
       client.release();
@@ -50,8 +52,8 @@ function createNeonClient(): SqlQuery {
     return client;
   }
 
-  return (strings: TemplateStringsArray, ...values: unknown[]) =>
-    getClient()(strings, ...values) as Promise<any[]>;
+  return <T extends SqlRow = SqlRow>(strings: TemplateStringsArray, ...values: unknown[]) =>
+    getClient()(strings, ...values) as Promise<T[]>;
 }
 
 export const sql: SqlQuery =

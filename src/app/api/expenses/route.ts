@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { expenseId, action, amountPaid, name, buyer, participants } = await request.json();
+  const { expenseId, action, amountPaid, name, buyer, participants, settled } = await request.json();
 
   const cleanParticipants = (value: unknown): string[] =>
     Array.isArray(value) ? value.filter((p): p is string => typeof p === 'string') : [];
@@ -30,6 +30,7 @@ export async function POST(request: Request) {
       buyer: buyer || null,
       amountPaid: amountPaid || null,
       participants: cleanParticipants(participants),
+      settled: false,
     };
     await db.addExpense(newExpense);
     return NextResponse.json({ success: true, expenses: await db.getExpenses() });
@@ -51,6 +52,7 @@ export async function POST(request: Request) {
     if (buyer !== undefined) expense.buyer = buyer || null;
     if (amountPaid !== undefined) expense.amountPaid = amountPaid ? parseFloat(amountPaid) : null;
     if (participants !== undefined) expense.participants = cleanParticipants(participants);
+    if (settled !== undefined) expense.settled = !!settled;
     await db.updateExpense(expense);
   }
 

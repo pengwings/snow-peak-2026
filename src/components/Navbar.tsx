@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { HomeIcon as Cabin, Plane, ShoppingCart, Activity, CheckSquare, Luggage, Trophy } from 'lucide-react';
+import { HomeIcon as Cabin, Plane, ShoppingCart, Activity, MapPin, ChefHat, CheckSquare, Luggage, Trophy } from 'lucide-react';
 import { displayName } from '@/lib/displayName';
 
 export default function Navbar() {
@@ -72,6 +72,8 @@ export default function Navbar() {
     { href: '/flights', label: 'Flights', icon: Plane },
     { href: '/expenses', label: 'Expenses', icon: ShoppingCart },
     { href: '/activities', label: 'Activities', icon: Activity },
+    { href: '/map', label: 'Map', icon: MapPin },
+    { href: '/food', label: 'Food', icon: ChefHat },
     { href: '/todos', label: 'Todos', icon: CheckSquare },
     { href: '/packing', label: 'Packing', icon: Luggage },
     { href: '/trivia', label: 'Trivia', icon: Trophy },
@@ -94,7 +96,7 @@ export default function Navbar() {
             ? `whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium tracking-wide uppercase transition-colors ${
                 isActive ? 'bg-[#e0d8c8] text-[#1a1a1a]' : 'text-[#6a6258] hover:bg-[#ede7dc]'
               }`
-            : `inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium tracking-wide uppercase rounded transition-colors ${
+            : `inline-flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium tracking-wide uppercase rounded transition-colors ${
                 isActive ? 'bg-[#e8e0d0] text-[#1a1a1a]' : 'text-[#5a5248] hover:bg-[#ede7dc] hover:text-[#1a1a1a]'
               }`
         }
@@ -113,17 +115,17 @@ export default function Navbar() {
         <div className="flex justify-between h-14 items-center">
 
           {/* Brand */}
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-6">
             <Link
               href="/"
-              className="font-semibold tracking-[0.15em] uppercase text-xs hover:opacity-80 transition-opacity"
+              className="font-semibold tracking-[0.15em] uppercase text-xs whitespace-nowrap hover:opacity-80 transition-opacity"
               style={{ color: 'var(--accent)', fontFamily: 'Inter, sans-serif' }}
             >
               Snow Peak 2026
             </Link>
 
             {/* Desktop links */}
-            <div className="hidden sm:flex sm:gap-1 sm:items-center">
+            <div className="hidden xl:flex xl:gap-1 xl:items-center">
               {visibleLinks.map((link) => renderLink(link, false))}
             </div>
           </div>
@@ -173,7 +175,7 @@ export default function Navbar() {
       </div>
 
       {/* Mobile scrollable nav */}
-      <div className="sm:hidden overflow-x-auto" style={{ borderTop: '1px solid var(--border)', background: 'var(--card)' }}>
+      <div className="xl:hidden overflow-x-auto" style={{ borderTop: '1px solid var(--border)', background: 'var(--card)' }}>
         <div className="flex gap-1 px-2 py-2 items-center">
           {visibleLinks.map((link) => renderLink(link, true))}
         </div>

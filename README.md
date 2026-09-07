@@ -8,6 +8,8 @@ A full-stack, nature-inspired web application built with [Next.js](https://nextj
 - **Flight Coordination**: Track arrival/departure details for all trip members.
 - **Cabin & Lodging Management**: Assign and manage cabin assignments with ranking.
 - **Activity Planning**: Collaborative itinerary and activity planning.
+- **Trip Map**: An embedded Google My Maps view of the places we want to visit, set by a trip admin from within the app.
+- **Campsite Cooking**: Propose meals to cook, vote on them, and build a shared shopping checklist of ingredients for each agreed-upon meal.
 - **Trip Schedule**: Day-by-day itinerary visible to everyone, editable only by trip admins.
 - **Expense Tracking**: Shared and individual expense tracking across the group.
 - **Todo Lists**: Shared actionable todo lists for pre-trip and trip responsibilities.

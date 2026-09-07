@@ -62,10 +62,12 @@ async function init() {
       name TEXT,
       buyer TEXT,
       amountPaid REAL,
-      participants JSONB DEFAULT '[]'
+      participants JSONB DEFAULT '[]',
+      settled BOOLEAN DEFAULT false
     );
   `;
   await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS participants JSONB DEFAULT '[]';`;
+  await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS settled BOOLEAN DEFAULT false;`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS activities (
@@ -79,6 +81,32 @@ async function init() {
   `;
   await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';`;
   await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS promoted BOOLEAN DEFAULT false;`;
+
+  // Food: proposed meals to cook at the campsite, plus a shopping checklist
+  // of ingredients for each meal once it's been agreed upon / promoted.
+  await sql`
+    CREATE TABLE IF NOT EXISTS food_ideas (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      proposer TEXT,
+      votes JSONB DEFAULT '[]',
+      promoted BOOLEAN DEFAULT false,
+      created_at TIMESTAMPTZ DEFAULT now()
+    );
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS food_ingredients (
+      id TEXT PRIMARY KEY,
+      food_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      purchased BOOLEAN DEFAULT false,
+      added_by TEXT,
+      assignee TEXT,
+      created_at TIMESTAMPTZ DEFAULT now()
+    );
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS food_ingredients_food_id_idx ON food_ingredients (food_id);`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS todos (
@@ -155,7 +183,7 @@ async function init() {
   `;
 
   // Seed the campground-provided items if none exist yet
-  const providedCount = await sql`SELECT count(*) FROM packing_items WHERE provided = true`;
+  const providedCount = await sql<{ count: string }>`SELECT count(*) FROM packing_items WHERE provided = true`;
   if (parseInt(providedCount[0].count) === 0) {
     console.log("Seeding provided packing items...");
     const providedItems = [
@@ -173,7 +201,7 @@ async function init() {
   }
 
   // Seed cabins 9–14 if table is empty
-  const cabinCount = await sql`SELECT count(*) FROM cabins`;
+  const cabinCount = await sql<{ count: string }>`SELECT count(*) FROM cabins`;
   if (parseInt(cabinCount[0].count) === 0) {
     console.log("Seeding cabins...");
     await sql`INSERT INTO cabins (id, name, capacity, occupants) VALUES ('9',  'Cabin 09', 3, '[]')`;
