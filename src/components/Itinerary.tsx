@@ -252,7 +252,7 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--muted)' }}>Start (blank = all day)</label>
+                <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--muted)' }}>Start</label>
                 <input
                   type="time"
                   className="px-3 py-2 text-sm focus:outline-none"
