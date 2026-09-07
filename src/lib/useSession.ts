@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/basePath';
 
 export type Session = {
   /** Signed-in member's name, or null while browsing in view-only mode. */
@@ -28,7 +29,7 @@ export function useSession(): Session {
   const [session, setSession] = useState<Session>(EMPTY);
 
   useEffect(() => {
-    fetch('/api/me')
+    apiFetch('/api/me')
       .then((res) => res.json())
       .then((data) => {
         if (!data.user && !data.viewer) {

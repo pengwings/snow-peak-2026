@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ScheduleItem } from '@/lib/db';
 import { X, Pencil, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { apiFetch } from '@/lib/basePath';
 
 // The trip runs September 10–13, 2026
 const TRIP_DAYS = ['2026-09-10', '2026-09-11', '2026-09-12', '2026-09-13'];
@@ -126,12 +127,12 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
   const [description, setDescription] = useState('');
 
   const fetchItems = async () => {
-    const res = await fetch('/api/schedule');
+    const res = await apiFetch('/api/schedule');
     setItems(await res.json());
   };
 
   useEffect(() => {
-    fetch('/api/schedule')
+    apiFetch('/api/schedule')
       .then((res) => res.json())
       .then(setItems);
   }, []);
@@ -150,7 +151,7 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
     e.preventDefault();
     if (!day || !title.trim()) return;
 
-    const res = await fetch('/api/schedule', {
+    const res = await apiFetch('/api/schedule', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -185,7 +186,7 @@ export default function Itinerary({ isAdmin }: { isAdmin: boolean }) {
   };
 
   const handleDelete = async (id: string) => {
-    await fetch('/api/schedule', {
+    await apiFetch('/api/schedule', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'delete', id }),

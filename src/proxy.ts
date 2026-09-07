@@ -23,7 +23,10 @@ export async function proxy(request: NextRequest) {
     if (user?.isAdmin) return NextResponse.next();
   }
 
-  return NextResponse.redirect(new URL('/', request.url));
+  // nextUrl.basePath keeps the redirect under /snow-peak. Next turns a
+  // same-origin Location into a relative one, so the browser stays on whichever
+  // host it came in on (brian-yu.com proxies to this deployment).
+  return NextResponse.redirect(new URL(request.nextUrl.basePath || '/', request.url));
 }
 
 export const proxyConfig = {

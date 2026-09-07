@@ -7,6 +7,7 @@ import { displayName } from '@/lib/displayName';
 import { useSession } from '@/lib/useSession';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
 import SignInHint from '@/components/SignInHint';
+import { apiFetch } from '@/lib/basePath';
 
 export default function TodosPage() {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -16,18 +17,18 @@ export default function TodosPage() {
   const [newAssignee, setNewAssignee] = useState('');
 
   useEffect(() => {
-    fetch('/api/todos')
+    apiFetch('/api/todos')
       .then((res) => res.json())
       .then(setTodos);
     // Fetch user list for assignee dropdown
-    fetch('/api/users')
+    apiFetch('/api/users')
       .then((r) => r.json())
       .then((data: { name: string }[]) => setUsers(data.map((u) => u.name)))
       .catch(() => {}); // non-fatal
   }, []);
 
   const fetchTodos = async () => {
-    const res = await fetch('/api/todos');
+    const res = await apiFetch('/api/todos');
     const data = await res.json();
     setTodos(data);
   };
@@ -36,7 +37,7 @@ export default function TodosPage() {
     e.preventDefault();
     if (!newText.trim()) return;
 
-    await fetch('/api/todos', {
+    await apiFetch('/api/todos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -52,7 +53,7 @@ export default function TodosPage() {
   };
 
   const toggleComplete = async (todo: Todo) => {
-    await fetch('/api/todos', {
+    await apiFetch('/api/todos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'update', id: todo.id, completed: !todo.completed }),
@@ -61,7 +62,7 @@ export default function TodosPage() {
   };
 
   const handleAssigneeChange = async (todo: Todo, assignee: string) => {
-    await fetch('/api/todos', {
+    await apiFetch('/api/todos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'update', id: todo.id, assignee: assignee || null }),
@@ -70,7 +71,7 @@ export default function TodosPage() {
   };
 
   const handleDelete = async (id: string) => {
-    await fetch('/api/todos', {
+    await apiFetch('/api/todos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'delete', id }),

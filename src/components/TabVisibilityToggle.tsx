@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
+import { apiFetch } from '@/lib/basePath';
 
 /**
  * Visible/Hidden pill for the current tab, shown next to a page's header.
@@ -14,10 +15,10 @@ export default function TabVisibilityToggle() {
   const [hiddenTabs, setHiddenTabs] = useState<string[] | null>(null);
 
   useEffect(() => {
-    fetch('/api/me')
+    apiFetch('/api/me')
       .then((res) => res.json())
       .then((data) => setIsAdmin(!!data.isAdmin));
-    fetch('/api/tabs')
+    apiFetch('/api/tabs')
       .then((res) => res.json())
       .then((data) => setHiddenTabs(data.hiddenTabs || []));
   }, []);
@@ -29,7 +30,7 @@ export default function TabVisibilityToggle() {
   const toggle = async () => {
     const next = isHidden ? hiddenTabs.filter((h) => h !== pathname) : [...hiddenTabs, pathname];
     setHiddenTabs(next);
-    await fetch('/api/tabs', {
+    await apiFetch('/api/tabs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ hiddenTabs: next }),

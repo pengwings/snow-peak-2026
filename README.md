@@ -61,3 +61,15 @@ A full-stack, nature-inspired web application built with [Next.js](https://nextj
 ## Production Deployment (Vercel)
 
 Set the `DATABASE_URL` environment variable in your Vercel project settings to your [Neon](https://neon.tech) connection string. The app automatically uses the Neon WebSocket driver in production.
+
+### URL and base path
+
+The app is served at **https://brian-yu.com/snow-peak**. It is its own Vercel project
+(`snow-peak-2026`), built with `basePath: '/snow-peak'` in `next.config.ts`; the personal-site
+project that owns `brian-yu.com` (the `about-brian` repo) rewrites `/snow-peak/*` to this
+deployment in its `vercel.json`. Because of the base path:
+
+- Locally the app is at [http://localhost:3000/snow-peak](http://localhost:3000/snow-peak); `/` redirects there.
+- Requests to the old `snow-peak-2026.vercel.app` host redirect to the new address.
+- `<Link>`, `router.push` and `next/image` add the prefix automatically. Plain `fetch()` calls do not,
+  so API calls go through `apiFetch()` from `src/lib/basePath.ts`, and raw asset URLs use `BASE_PATH`.

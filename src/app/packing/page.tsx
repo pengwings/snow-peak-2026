@@ -7,6 +7,7 @@ import { displayName } from '@/lib/displayName';
 import { useSession } from '@/lib/useSession';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
 import SignInHint from '@/components/SignInHint';
+import { apiFetch } from '@/lib/basePath';
 
 export default function PackingPage() {
   const [items, setItems] = useState<PackingItem[]>([]);
@@ -18,24 +19,24 @@ export default function PackingPage() {
   const [newProvidedName, setNewProvidedName] = useState('');
 
   useEffect(() => {
-    fetch('/api/packing')
+    apiFetch('/api/packing')
       .then((res) => res.json())
       .then(setItems);
     // Fetch user list for assignee dropdown
-    fetch('/api/users')
+    apiFetch('/api/users')
       .then((r) => r.json())
       .then((data: { name: string }[]) => setUsers(data.map((u) => u.name)))
       .catch(() => {}); // non-fatal
   }, []);
 
   const fetchItems = async () => {
-    const res = await fetch('/api/packing');
+    const res = await apiFetch('/api/packing');
     const data = await res.json();
     setItems(data);
   };
 
   const createItem = async (body: Record<string, unknown>) => {
-    await fetch('/api/packing', {
+    await apiFetch('/api/packing', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'create', ...body }),
@@ -66,7 +67,7 @@ export default function PackingPage() {
   };
 
   const togglePacked = async (item: PackingItem) => {
-    await fetch('/api/packing', {
+    await apiFetch('/api/packing', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'update', id: item.id, packed: !item.packed }),
@@ -75,7 +76,7 @@ export default function PackingPage() {
   };
 
   const handleAssigneeChange = async (item: PackingItem, assignee: string) => {
-    await fetch('/api/packing', {
+    await apiFetch('/api/packing', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'update', id: item.id, assignee: assignee || null }),
@@ -84,7 +85,7 @@ export default function PackingPage() {
   };
 
   const handleDelete = async (id: string) => {
-    await fetch('/api/packing', {
+    await apiFetch('/api/packing', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'delete', id }),

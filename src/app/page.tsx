@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { displayName } from '@/lib/displayName';
 import { useSession } from '@/lib/useSession';
 import Itinerary from '@/components/Itinerary';
+import { BASE_PATH } from '@/lib/basePath';
 
 export default function Home() {
   const { user, isAdmin, ready } = useSession();
@@ -36,7 +37,7 @@ export default function Home() {
         {/* Campground Image */}
         <div className="relative w-full max-w-3xl mx-auto mb-8 rounded overflow-hidden" style={{ border: '1px solid var(--border)' }}>
           <Image
-            src="/assets/snowpeakcampground.avif"
+            src={`${BASE_PATH}/assets/snowpeakcampground.avif`}
             alt="Snow Peak Campground"
             width={1200}
             height={800}

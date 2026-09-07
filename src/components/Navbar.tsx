@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { HomeIcon as Cabin, Plane, ShoppingCart, Activity, MapPin, ChefHat, CheckSquare, Luggage, Trophy, Eye } from 'lucide-react';
 import { displayName } from '@/lib/displayName';
+import { apiFetch } from '@/lib/basePath';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -16,7 +17,7 @@ export default function Navbar() {
   const [hiddenTabs, setHiddenTabs] = useState<string[]>([]);
 
   useEffect(() => {
-    fetch('/api/me')
+    apiFetch('/api/me')
       .then((res) => res.json())
       .then((data) => {
         setUser(data.user);
@@ -25,7 +26,7 @@ export default function Navbar() {
         setViewer(!!data.viewer);
       });
     const fetchTabs = () =>
-      fetch('/api/tabs')
+      apiFetch('/api/tabs')
         .then((res) => res.json())
         .then((data) => setHiddenTabs(data.hiddenTabs || []));
     fetchTabs();
@@ -38,14 +39,14 @@ export default function Navbar() {
   if (pathname === '/login' || pathname === '/trivia/board') return null;
 
   const handleLogout = async () => {
-    await fetch('/api/logout', { method: 'POST' });
+    await apiFetch('/api/logout', { method: 'POST' });
     router.push('/login');
     router.refresh();
   };
 
   const toggleAdminMode = async () => {
     if (isAdmin) {
-      await fetch('/api/admin-mode', {
+      await apiFetch('/api/admin-mode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enable: false }),
@@ -56,7 +57,7 @@ export default function Navbar() {
 
     const password = window.prompt('Enter the admin password to turn on admin mode:');
     if (password === null) return;
-    const res = await fetch('/api/admin-mode', {
+    const res = await apiFetch('/api/admin-mode', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ enable: true, password }),

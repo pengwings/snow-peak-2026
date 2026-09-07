@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TriviaClientState } from './trivia';
+import { apiFetch } from '@/lib/basePath';
 
 export type { TriviaClientState };
 
@@ -24,7 +25,7 @@ export function useTriviaState(intervalMs = 1500, spectator = false) {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch(`/api/trivia/state${spectator ? '?spectator=1' : ''}`, { cache: 'no-store' });
+      const res = await apiFetch(`/api/trivia/state${spectator ? '?spectator=1' : ''}`, { cache: 'no-store' });
       if (!res.ok) {
         setError(res.status === 401 ? 'unauthorized' : 'Could not load the game.');
         return;

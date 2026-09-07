@@ -12,6 +12,7 @@ import { useTriviaState } from '@/lib/useTriviaState';
 import {
   Countdown, Leaderboard, Panel, RevealBars, SectionTitle, letter, CORRECT, WRONG,
 } from '@/components/trivia/TriviaShared';
+import { apiFetch } from '@/lib/basePath';
 
 export default function TriviaPage() {
   const router = useRouter();
@@ -29,7 +30,7 @@ export default function TriviaPage() {
     if (!user || !state?.question || state.myAnswer || submitting !== null) return;
     setSubmitting(choice);
     setAnswerError(null);
-    const res = await fetch('/api/trivia/answer', {
+    const res = await apiFetch('/api/trivia/answer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ questionId: state.question.id, choice }),

@@ -7,6 +7,7 @@ import type { TriviaQuestion } from '@/lib/db';
 import { displayName } from '@/lib/displayName';
 import { useTriviaState } from '@/lib/useTriviaState';
 import { Countdown, Leaderboard, Panel, SectionTitle, letter, CORRECT, WRONG } from '@/components/trivia/TriviaShared';
+import { apiFetch } from '@/lib/basePath';
 
 type Action = 'start' | 'next' | 'reveal' | 'leaderboard' | 'end' | 'reset';
 
@@ -20,7 +21,7 @@ export default function TriviaHostPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/me')
+    apiFetch('/api/me')
       .then((res) => res.json())
       .then((data) => {
         if (!data.user) router.push('/login');
@@ -29,7 +30,7 @@ export default function TriviaHostPage() {
   }, [router]);
 
   const loadQuestions = useCallback(() => {
-    fetch('/api/trivia/questions')
+    apiFetch('/api/trivia/questions')
       .then((res) => (res.ok ? res.json() : []))
       .then(setQuestions);
   }, []);
@@ -41,7 +42,7 @@ export default function TriviaHostPage() {
   const send = async (body: Record<string, unknown>) => {
     setBusy(true);
     setMessage(null);
-    const res = await fetch('/api/trivia/game', {
+    const res = await apiFetch('/api/trivia/game', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

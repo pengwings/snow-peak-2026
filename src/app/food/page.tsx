@@ -8,6 +8,7 @@ import { FOOD_AGREED_THRESHOLD, isFoodApproved } from '@/lib/food';
 import { useSession } from '@/lib/useSession';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
 import SignInHint from '@/components/SignInHint';
+import { apiFetch } from '@/lib/basePath';
 
 export default function FoodPage() {
   const [ideas, setIdeas] = useState<FoodIdea[]>([]);
@@ -21,18 +22,18 @@ export default function FoodPage() {
   const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch('/api/food')
+    apiFetch('/api/food')
       .then((res) => res.json())
       .then(setIdeas);
 
-    fetch('/api/users')
+    apiFetch('/api/users')
       .then((r) => r.json())
       .then((data: { name: string }[]) => setUsers(data.map((u) => u.name)))
       .catch(() => {}); // non-fatal
   }, []);
 
   const post = async (body: Record<string, unknown>) => {
-    const res = await fetch('/api/food', {
+    const res = await apiFetch('/api/food', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

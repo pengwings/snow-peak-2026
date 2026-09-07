@@ -6,6 +6,7 @@ import { displayName } from '@/lib/displayName';
 import { useSession } from '@/lib/useSession';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
 import SignInHint from '@/components/SignInHint';
+import { apiFetch } from '@/lib/basePath';
 
 export default function CabinsPage() {
   const [cabins, setCabins] = useState<Cabin[]>([]);
@@ -13,25 +14,25 @@ export default function CabinsPage() {
   const [users, setUsers] = useState<string[]>([]);
 
   useEffect(() => {
-    fetch('/api/cabins')
+    apiFetch('/api/cabins')
       .then((res) => res.json())
       .then(setCabins);
 
-    fetch('/api/users')
+    apiFetch('/api/users')
       .then((r) => r.json())
       .then((data: { name: string }[]) => setUsers(data.map((u) => u.name)))
       .catch(() => {}); // non-fatal
   }, []);
 
   const fetchCabins = async () => {
-    const res = await fetch('/api/cabins');
+    const res = await apiFetch('/api/cabins');
     const data = await res.json();
     setCabins(data);
   };
 
   // forUser lets an admin move another member; omitted, it acts on yourself
   const handleAssign = async (cabinId: string | null, forUser?: string) => {
-    await fetch('/api/cabins', {
+    await apiFetch('/api/cabins', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cabinId, ...(forUser ? { forUser } : {}) }),

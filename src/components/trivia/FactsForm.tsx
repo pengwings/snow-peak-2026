@@ -5,6 +5,7 @@ import type { TriviaFacts } from '@/lib/db';
 import { MIN_FACTS, MAX_FACTS } from '@/lib/triviaConfig';
 import { Panel, SectionTitle } from './TriviaShared';
 import ExampleFacts from './ExampleFacts';
+import { apiFetch } from '@/lib/basePath';
 
 const emptyList = () => Array.from({ length: MAX_FACTS }, () => '');
 const padList = (facts: string[]) => [...facts, ...emptyList()].slice(0, MAX_FACTS);
@@ -27,7 +28,7 @@ export default function FactsForm() {
   const [savedFlash, setSavedFlash] = useState(false);
 
   useEffect(() => {
-    fetch('/api/trivia/facts')
+    apiFetch('/api/trivia/facts')
       .then((res) => res.json())
       .then((data) => {
         setOpen(!!data.open);
@@ -48,7 +49,7 @@ export default function FactsForm() {
     e.preventDefault();
     setSaving(true);
     setError(null);
-    const res = await fetch('/api/trivia/facts', {
+    const res = await apiFetch('/api/trivia/facts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ hobby, selfFacts, hobbyFacts }),

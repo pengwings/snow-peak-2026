@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/basePath';
 
 export default function Login() {
   const [name, setName] = useState('');
@@ -14,7 +15,7 @@ export default function Login() {
 
     setError('');
 
-    const response = await fetch('/api/login', {
+    const response = await apiFetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
@@ -32,7 +33,7 @@ export default function Login() {
   };
 
   const handleViewOnly = async () => {
-    await fetch('/api/login', {
+    await apiFetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ viewOnly: true }),
