@@ -54,9 +54,11 @@ async function init() {
       id TEXT PRIMARY KEY,
       name TEXT,
       buyer TEXT,
-      amountPaid REAL
+      amountPaid REAL,
+      participants JSONB DEFAULT '[]'
     );
   `;
+  await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS participants JSONB DEFAULT '[]';`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS activities (

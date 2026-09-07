@@ -13,6 +13,9 @@ export default function ExpensesPage() {
   const [newExpenseName, setNewExpenseName] = useState('');
   const [newExpenseBuyer, setNewExpenseBuyer] = useState('');
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
+  const [newExpenseParticipants, setNewExpenseParticipants] = useState<string[]>([]);
+  const [editingSplitId, setEditingSplitId] = useState<string | null>(null);
+  const [splitDraft, setSplitDraft] = useState<string[]>([]);
 
   const router = useRouter();
 
@@ -39,7 +42,9 @@ export default function ExpensesPage() {
   const fetchUsers = async () => {
     const res = await fetch('/api/users');
     const data = await res.json();
-    setUsers(data.map((u: { name: string }) => u.name));
+    const names = data.map((u: { name: string }) => u.name);
+    setUsers(names);
+    setNewExpenseParticipants(names);
   };
 
   const handleUpdate = async (expenseId: string, field: 'name' | 'buyer' | 'amountPaid') => {
@@ -80,17 +85,81 @@ export default function ExpensesPage() {
     await fetch('/api/expenses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'add', name: newExpenseName, buyer, amountPaid }),
+      body: JSON.stringify({ action: 'add', name: newExpenseName, buyer, amountPaid, participants: newExpenseParticipants }),
     });
     setNewExpenseName('');
     setNewExpenseBuyer('');
     setNewExpenseAmount('');
+    setNewExpenseParticipants(users);
     fetchExpenses();
   };
+
+  const openSplitEditor = (expense: Expense) => {
+    setEditingSplitId(expense.id);
+    setSplitDraft(expense.participants.length ? expense.participants : [...users]);
+  };
+
+  const handleSaveSplit = async (expenseId: string) => {
+    await fetch('/api/expenses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expenseId, action: 'update', participants: splitDraft }),
+    });
+    setEditingSplitId(null);
+    fetchExpenses();
+  };
+
+  const toggleName = (list: string[], name: string) =>
+    list.includes(name) ? list.filter((n) => n !== name) : [...list, name];
 
   if (!user) return <div className="p-8" style={{ color: 'var(--muted)' }}>Loading…</div>;
 
   const totalSpent = expenses.reduce((acc, curr) => acc + (curr.amountPaid || 0), 0);
+
+  // Empty participants = split among everyone
+  const participantsOf = (expense: Expense) =>
+    expense.participants.length ? expense.participants : users;
+
+  const splitLabel = (expense: Expense) => {
+    const parts = expense.participants;
+    if (parts.length === 0 || (users.length > 0 && parts.length === users.length)) return 'Everyone';
+    if (parts.length <= 2) return parts.map(displayName).join(', ');
+    return `${parts.length} people`;
+  };
+
+  // Per-person totals: what they paid vs their share of what they participated in
+  const paidBy = new Map<string, number>();
+  const shareOf = new Map<string, number>();
+  for (const expense of expenses) {
+    if (!expense.buyer || !expense.amountPaid) continue;
+    const parts = participantsOf(expense);
+    if (parts.length === 0) continue;
+    paidBy.set(expense.buyer, (paidBy.get(expense.buyer) || 0) + expense.amountPaid);
+    const share = expense.amountPaid / parts.length;
+    for (const p of parts) shareOf.set(p, (shareOf.get(p) || 0) + share);
+  }
+  const people = Array.from(new Set([...paidBy.keys(), ...shareOf.keys()]));
+  const netBalances = people
+    .map((person) => {
+      const paid = paidBy.get(person) || 0;
+      const share = shareOf.get(person) || 0;
+      return { person, paid, share, net: paid - share };
+    })
+    .sort((a, b) => b.net - a.net);
+
+  // Minimal transfers: repeatedly match the biggest creditor with the biggest debtor
+  const creditors = netBalances.filter((b) => b.net > 0.005).map((b) => ({ person: b.person, amount: b.net }));
+  const debtors = netBalances.filter((b) => b.net < -0.005).map((b) => ({ person: b.person, amount: -b.net }));
+  const transfers: { from: string; to: string; amount: number }[] = [];
+  let ci = 0, di = 0;
+  while (ci < creditors.length && di < debtors.length) {
+    const amount = Math.min(creditors[ci].amount, debtors[di].amount);
+    if (amount > 0.005) transfers.push({ from: debtors[di].person, to: creditors[ci].person, amount });
+    creditors[ci].amount -= amount;
+    debtors[di].amount -= amount;
+    if (creditors[ci].amount <= 0.005) ci++;
+    if (debtors[di].amount <= 0.005) di++;
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-12">
@@ -141,6 +210,39 @@ export default function ExpensesPage() {
               />
             </div>
           </div>
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <label className="block text-sm font-medium text-gray-700">Split between</label>
+              <button
+                type="button"
+                onClick={() => setNewExpenseParticipants(users)}
+                className="text-xs uppercase tracking-wide"
+                style={{ color: 'var(--accent)' }}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewExpenseParticipants([])}
+                className="text-xs uppercase tracking-wide"
+                style={{ color: 'var(--muted)' }}
+              >
+                None
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              {users.map((u) => (
+                <label key={u} className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newExpenseParticipants.includes(u)}
+                    onChange={() => setNewExpenseParticipants(toggleName(newExpenseParticipants, u))}
+                  />
+                  {displayName(u)}
+                </label>
+              ))}
+            </div>
+          </div>
           <button
             type="submit"
             className="w-full md:w-auto px-6 py-2 text-sm tracking-widest uppercase transition-colors"
@@ -158,14 +260,15 @@ export default function ExpensesPage() {
       </div>
 
       {/* Table */}
-      <div style={{ border: '1px solid var(--border)' }}>
+      <div className="overflow-x-auto" style={{ border: '1px solid var(--border)' }}>
         <table className="min-w-full" style={{ borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--card)' }}>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Item</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Buyer</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Amount</th>
-              <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Actions</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Item</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Buyer</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Amount</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Split</th>
+              <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -173,10 +276,11 @@ export default function ExpensesPage() {
               const isEditingName = editingExpense[expense.id]?.name !== undefined;
               const isEditingBuyer = editingExpense[expense.id]?.buyer !== undefined;
               const isEditingAmount = editingExpense[expense.id]?.amountPaid !== undefined;
+              const isEditingSplit = editingSplitId === expense.id;
 
               return (
                 <tr key={expense.id} style={{ borderBottom: i < expenses.length - 1 ? '1px solid var(--border)' : 'none', background: 'var(--card)' }}>
-                  <td className="px-6 py-4 text-sm font-medium" style={{ color: 'var(--foreground)' }}>
+                  <td className="px-3 sm:px-6 py-4 text-sm font-medium" style={{ color: 'var(--foreground)' }}>
                     {isEditingName ? (
                       <div className="flex items-center gap-2">
                         <input
@@ -210,7 +314,7 @@ export default function ExpensesPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-sm" style={{ color: 'var(--muted)' }}>
+                  <td className="px-3 sm:px-6 py-4 text-sm" style={{ color: 'var(--muted)' }}>
                     {isEditingBuyer ? (
                       <div className="flex items-center gap-2">
                         <select
@@ -248,7 +352,7 @@ export default function ExpensesPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-sm" style={{ color: 'var(--muted)' }}>
+                  <td className="px-3 sm:px-6 py-4 text-sm" style={{ color: 'var(--muted)' }}>
                     {isEditingAmount ? (
                       <div className="flex items-center gap-2">
                         <span style={{ color: 'var(--muted)' }}>$</span>
@@ -286,7 +390,49 @@ export default function ExpensesPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-sm text-right">
+                  <td className="px-3 sm:px-6 py-4 text-sm" style={{ color: 'var(--muted)' }}>
+                    {isEditingSplit ? (
+                      <div>
+                        <div className="max-h-40 overflow-y-auto space-y-1 mb-2 pr-2">
+                          {users.map((u) => (
+                            <label key={u} className="flex items-center gap-1.5 text-xs cursor-pointer whitespace-nowrap" style={{ color: 'var(--foreground)' }}>
+                              <input
+                                type="checkbox"
+                                checked={splitDraft.includes(u)}
+                                onChange={() => setSplitDraft(toggleName(splitDraft, u))}
+                              />
+                              {displayName(u)}
+                            </label>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleSaveSplit(expense.id)}
+                            className="text-xs px-2 py-1"
+                            style={{ background: 'var(--accent)', color: '#f5f0e8' }}
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingSplitId(null)}
+                            className="text-xs px-2 py-1"
+                            style={{ color: 'var(--muted)', border: '1px solid var(--border)' }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <span
+                        onClick={() => openSplitEditor(expense)}
+                        className="cursor-pointer hover:underline whitespace-nowrap"
+                        title={participantsOf(expense).map(displayName).join(', ')}
+                      >
+                        {splitLabel(expense)}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 sm:px-6 py-4 text-sm text-right">
                     <button
                       onClick={() => handleDelete(expense.id, expense.name)}
                       className="text-xs uppercase tracking-wide"
@@ -301,6 +447,57 @@ export default function ExpensesPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Settle up */}
+      <h2 className="text-2xl font-normal mt-12 mb-4" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>Who Owes Whom</h2>
+      <div className="mb-8 p-6" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+        {transfers.length === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--muted)' }}>
+            {netBalances.length === 0 ? 'Nothing to settle yet — add expenses with a buyer and amount.' : 'Everyone is settled up.'}
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {transfers.map((t, i) => (
+              <li key={i} className="flex justify-between items-center text-sm" style={{ borderBottom: i < transfers.length - 1 ? '1px solid var(--border)' : 'none', paddingBottom: i < transfers.length - 1 ? '0.5rem' : 0 }}>
+                <span style={{ color: 'var(--foreground)' }}>
+                  <span className="font-medium">{displayName(t.from)}</span>
+                  <span style={{ color: 'var(--muted)' }}> owes </span>
+                  <span className="font-medium">{displayName(t.to)}</span>
+                </span>
+                <span className="font-medium" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>${t.amount.toFixed(2)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Per-person breakdown */}
+      {netBalances.length > 0 && (
+        <div className="overflow-x-auto" style={{ border: '1px solid var(--border)' }}>
+          <table className="min-w-full" style={{ borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--card)' }}>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Person</th>
+                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Paid</th>
+                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Share</th>
+                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Net</th>
+              </tr>
+            </thead>
+            <tbody>
+              {netBalances.map((b, i) => (
+                <tr key={b.person} style={{ borderBottom: i < netBalances.length - 1 ? '1px solid var(--border)' : 'none', background: 'var(--card)' }}>
+                  <td className="px-3 sm:px-6 py-3 text-sm font-medium" style={{ color: 'var(--foreground)' }}>{displayName(b.person)}</td>
+                  <td className="px-3 sm:px-6 py-3 text-sm text-right" style={{ color: 'var(--muted)' }}>${b.paid.toFixed(2)}</td>
+                  <td className="px-3 sm:px-6 py-3 text-sm text-right" style={{ color: 'var(--muted)' }}>${b.share.toFixed(2)}</td>
+                  <td className="px-3 sm:px-6 py-3 text-sm text-right font-medium" style={{ color: Math.abs(b.net) < 0.005 ? 'var(--muted)' : b.net > 0 ? '#2d6a4f' : '#a33' }}>
+                    {b.net > 0 ? '+' : ''}{b.net < 0 ? '−' : ''}${Math.abs(b.net).toFixed(2)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

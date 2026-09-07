@@ -27,6 +27,7 @@ export type Expense = {
   name: string;
   buyer: string | null;
   amountPaid: number | null;
+  participants: string[]; // empty = split among everyone
 };
 
 export type Activity = {
@@ -150,16 +151,18 @@ export const db = {
       id: r.id,
       name: r.name,
       buyer: r.buyer,
-      amountPaid: r.amountpaid
+      amountPaid: r.amountpaid,
+      participants: typeof r.participants === 'string' ? JSON.parse(r.participants) : (r.participants || [])
     }));
   },
   async addExpense(expense: Expense) {
-    await sql`INSERT INTO expenses (id, name, buyer, amountpaid)
-              VALUES (${expense.id}, ${expense.name}, ${expense.buyer || null}, ${expense.amountPaid || null})`;
+    await sql`INSERT INTO expenses (id, name, buyer, amountpaid, participants)
+              VALUES (${expense.id}, ${expense.name}, ${expense.buyer || null}, ${expense.amountPaid || null}, ${JSON.stringify(expense.participants)}::jsonb)`;
   },
   async updateExpense(expense: Expense) {
     await sql`UPDATE expenses
-              SET buyer = ${expense.buyer}, amountpaid = ${expense.amountPaid}
+              SET name = ${expense.name}, buyer = ${expense.buyer}, amountpaid = ${expense.amountPaid},
+                  participants = ${JSON.stringify(expense.participants)}::jsonb
               WHERE id = ${expense.id}`;
   },
   async removeExpense(expenseId: string) {
