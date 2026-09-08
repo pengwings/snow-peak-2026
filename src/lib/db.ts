@@ -491,11 +491,11 @@ export const db = {
       elapsedMs: r.elapsed_ms,
     }));
   },
-  /** First answer wins: a second tap on a different option is ignored. */
+  /** Latest answer wins: players can change their pick until time runs out, and the tiebreak clock follows the final pick. */
   async addTriviaAnswer(answer: TriviaAnswer) {
     await sql`INSERT INTO trivia_answers (question_id, username, choice, elapsed_ms)
               VALUES (${answer.questionId}, ${answer.username}, ${answer.choice}, ${answer.elapsedMs})
-              ON CONFLICT (question_id, username) DO NOTHING`;
+              ON CONFLICT (question_id, username) DO UPDATE SET choice = EXCLUDED.choice, elapsed_ms = EXCLUDED.elapsed_ms, answered_at = now()`;
   },
   async clearTriviaAnswers() {
     await sql`DELETE FROM trivia_answers`;

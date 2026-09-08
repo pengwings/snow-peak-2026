@@ -200,7 +200,7 @@ export async function applyHostAction(action: HostAction): Promise<string | null
   }
 }
 
-/** Records a player's answer; returns an error message if it can't be accepted. */
+/** Records a player's answer, replacing any earlier pick; returns an error message if it can't be accepted. */
 export async function submitAnswer(username: string, questionId: string, choice: number): Promise<string | null> {
   const state = await getLiveGameState();
   if (state.phase !== 'question' || state.questionId !== questionId) return 'That question is no longer open.';

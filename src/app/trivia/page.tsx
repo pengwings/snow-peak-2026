@@ -26,7 +26,8 @@ export default function TriviaPage() {
   }, [error, router]);
 
   const answer = async (choice: number) => {
-    if (!user || !state?.question || state.myAnswer || submitting !== null) return;
+    if (!user || !state?.question || submitting !== null) return;
+    if (state.myAnswer?.choice === choice) return; // already on this option
     setSubmitting(choice);
     setAnswerError(null);
     const res = await fetch('/api/trivia/answer', {
@@ -114,7 +115,8 @@ export default function TriviaPage() {
     );
   } else if (state.phase === 'question' && state.question) {
     const timeUp = timeLeftMs <= 0;
-    const locked = !user || !!state.myAnswer || timeUp;
+    // Picks can be changed until the clock runs out; only then do the options lock.
+    const locked = !user || timeUp;
     body = (
       <Panel>
         {progress}
@@ -154,10 +156,12 @@ export default function TriviaPage() {
             {answerError
               ? <span style={{ color: WRONG }}>{answerError}</span>
               : state.myAnswer
-                ? `Locked in ✓ · ${state.answeredCount} of ${state.players.length} answered`
+                ? timeUp
+                  ? `Final answer: ${letter(state.myAnswer.choice)} · ${state.answeredCount} of ${state.players.length} answered`
+                  : `Answered ${letter(state.myAnswer.choice)} ✓ · tap another option to change · ${state.answeredCount} of ${state.players.length} answered`
                 : timeUp
                   ? "Time's up!"
-                  : 'Tap an answer. First tap counts.'}
+                  : 'Tap an answer. You can change it until time runs out.'}
           </p>
         )}
       </Panel>

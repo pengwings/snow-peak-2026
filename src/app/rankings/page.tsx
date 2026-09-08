@@ -103,9 +103,7 @@ export default function RankingsPage() {
   };
 
   const importTrivia = async () => {
-    const name = window.prompt('Name for this game in the standings:', 'Trivia');
-    if (name === null) return;
-    if (await post({ action: 'importTrivia', name })) setNotice('Recorded the trivia results.');
+    if (await post({ action: 'importTrivia' })) setNotice('Recorded the trivia results.');
   };
 
   const initialDraft = useMemo<GameDraft>(() => {

@@ -57,17 +57,15 @@ export default function TriviaHostPage() {
 
   /** Copies the final standings into the Grand Prix rankings as a game. */
   const recordToRankings = async () => {
-    const name = window.prompt('Name for this game in the rankings:', 'Trivia');
-    if (name === null) return;
     setBusy(true);
     setMessage(null);
     const res = await fetch('/api/rankings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'importTrivia', name }),
+      body: JSON.stringify({ action: 'importTrivia' }),
     });
     const data = await res.json().catch(() => ({}));
-    setMessage(res.ok ? `Recorded “${name}” in the rankings.` : data.error || 'Could not record the results.');
+    setMessage(res.ok ? `Recorded “${data.game?.name ?? 'Trivia'}” in the rankings.` : data.error || 'Could not record the results.');
     setBusy(false);
   };
 

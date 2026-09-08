@@ -121,13 +121,17 @@ export function validateResults(input: unknown, knownUsers: Set<string>): { resu
  * leaderboard carry over as shared places. Returns an error when there's no
  * finished game to record.
  */
-export async function importTriviaGame(name: string): Promise<{ game: Game } | { error: string }> {
+export async function importTriviaGame(): Promise<{ game: Game } | { error: string }> {
   if (!(await isTriviaImportable())) return { error: 'The trivia game has no standings to record yet.' };
-  const [players, questions, answers] = await Promise.all([
+  const [players, questions, answers, existing] = await Promise.all([
     db.getTriviaPlayers(),
     db.getTriviaQuestions(),
     db.getTriviaAnswers(),
+    db.getGames(),
   ]);
+  // "Trivia" the first time, then "Trivia 2", "Trivia 3", ... if it's played again.
+  const priorRounds = existing.filter((g) => g.source === 'trivia').length;
+  const name = priorRounds === 0 ? 'Trivia' : `Trivia ${priorRounds + 1}`;
   const leaderboard = computeLeaderboard(players, questions, answers);
   if (leaderboard.length === 0) return { error: 'Nobody played the trivia game.' };
 

@@ -137,6 +137,28 @@ export default function Navbar() {
     .map((g) => ({ ...g, links: isAdmin ? g.links : g.links.filter((l) => !hiddenTabs.includes(l.href)) }))
     .filter((g) => g.links.length > 0);
 
+  const renderMenuItem = (link: NavLink, mobile: boolean) => {
+    const LinkIcon = link.icon;
+    const isHidden = hiddenTabs.includes(link.href);
+    return (
+      <Link
+        key={link.href}
+        href={link.href}
+        role="menuitem"
+        onClick={() => setOpenGroup(null)}
+        className={`flex items-center gap-2 text-xs font-medium tracking-wide uppercase transition-colors whitespace-nowrap ${
+          mobile ? 'px-3 py-1.5 rounded' : 'px-3 py-2'
+        } ${isActive(link.href) ? 'bg-[#e8e0d0] text-[#1a1a1a]' : 'text-[#5a5248] hover:bg-[#ede7dc] hover:text-[#1a1a1a]'}`}
+        style={isAdmin && isHidden ? { opacity: 0.45 } : undefined}
+        title={isAdmin && isHidden ? 'Hidden from members' : undefined}
+      >
+        <LinkIcon className="w-3.5 h-3.5" />
+        {link.label}
+        {isAdmin && isHidden && <span className={`${mobile ? '' : 'ml-auto'} text-[10px] normal-case font-normal`}>hidden</span>}
+      </Link>
+    );
+  };
+
   const renderGroup = (group: NavGroup, mobile: boolean) => {
     const Icon = group.icon;
     const active = group.links.some((l) => isActive(l.href));
@@ -159,38 +181,21 @@ export default function Navbar() {
           {mobile && current && <span className="normal-case font-normal" style={{ color: 'var(--muted)' }}>· {current.label}</span>}
           <ChevronDown className="w-3 h-3 transition-transform" style={{ transform: open ? 'rotate(180deg)' : 'none', opacity: 0.6 }} />
         </button>
-        {open && (
+        {/* Desktop: a dropdown under the button. Phones get a full-width panel instead (see below). */}
+        {open && !mobile && (
           <div
             role="menu"
             className="absolute left-0 top-full mt-1 min-w-[11rem] py-1 z-50"
             style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 6px 20px rgba(40, 30, 20, 0.12)' }}
           >
-            {group.links.map((link) => {
-              const LinkIcon = link.icon;
-              const isHidden = hiddenTabs.includes(link.href);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  role="menuitem"
-                  onClick={() => setOpenGroup(null)}
-                  className={`flex items-center gap-2.5 px-3 py-2 text-xs font-medium tracking-wide uppercase transition-colors ${
-                    isActive(link.href) ? 'bg-[#e8e0d0] text-[#1a1a1a]' : 'text-[#5a5248] hover:bg-[#ede7dc] hover:text-[#1a1a1a]'
-                  }`}
-                  style={isAdmin && isHidden ? { opacity: 0.45 } : undefined}
-                  title={isAdmin && isHidden ? 'Hidden from members' : undefined}
-                >
-                  <LinkIcon className="w-3.5 h-3.5" />
-                  {link.label}
-                  {isAdmin && isHidden && <span className="ml-auto text-[10px] normal-case font-normal">hidden</span>}
-                </Link>
-              );
-            })}
+            {group.links.map((link) => renderMenuItem(link, false))}
           </div>
         )}
       </div>
     );
   };
+
+  const openMobileGroup = groups.find((g) => g.key === openGroup);
 
   return (
     <nav ref={navRef} className="sticky top-0 z-50" style={{ borderBottom: '1px solid var(--border)', background: 'var(--card)' }}>
@@ -278,11 +283,20 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Phone: the three group chips in a second row; each opens its menu below */}
+      {/* Phone: the three group chips in a second row; the open group's tabs appear in a panel beneath */}
       <div className="md:hidden" style={{ borderTop: '1px solid var(--border)', background: 'var(--card)' }}>
-        <div className="flex gap-1 px-2 py-2 items-center overflow-x-auto">
+        <div className="flex flex-wrap gap-1 px-2 py-2 items-center">
           {groups.map((group) => renderGroup(group, true))}
         </div>
+        {openMobileGroup && (
+          <div
+            role="menu"
+            className="flex flex-wrap gap-1 px-2 py-2"
+            style={{ borderTop: '1px solid var(--border)', background: 'var(--background)' }}
+          >
+            {openMobileGroup.links.map((link) => renderMenuItem(link, true))}
+          </div>
+        )}
       </div>
     </nav>
   );

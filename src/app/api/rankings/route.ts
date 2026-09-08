@@ -19,8 +19,7 @@ export async function POST(request: Request) {
   const { action } = body;
 
   if (action === 'importTrivia') {
-    const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : 'Trivia';
-    const result = await importTriviaGame(name);
+    const result = await importTriviaGame();
     if ('error' in result) return NextResponse.json({ error: result.error }, { status: 409 });
     return NextResponse.json({ success: true, game: result.game, ...(await buildRankingsData()) });
   }
