@@ -8,6 +8,8 @@ import { displayName } from '@/lib/displayName';
 import { Download } from 'lucide-react';
 import { SectionTitle, WRONG, CORRECT } from '@/components/trivia/TriviaShared';
 import { buildTriviaPrompt } from '@/lib/triviaPrompt';
+import { MAX_FACT_LENGTH } from '@/lib/triviaConfig';
+import { GrowingTextarea } from '@/components/trivia/GrowingTextarea';
 
 type FactKey = 'selfFacts' | 'hobbyFacts';
 type Editing = { username: string; field: FactKey | 'hobby'; index: number; value: string } | null;
@@ -137,15 +139,14 @@ export default function TriviaSubmissionsPage() {
 
   const editor = (
     <span className="flex-1 flex gap-2">
-      <input
+      <GrowingTextarea
         autoFocus
-        type="text"
         className="flex-1 border-gray-400 rounded-md shadow-sm border px-2 py-1 text-sm text-gray-900"
         value={editing?.value ?? ''}
-        maxLength={200}
+        maxLength={MAX_FACT_LENGTH}
         onChange={(e) => editing && setEditing({ ...editing, value: e.target.value })}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') commitEdit();
+          if (e.key === 'Enter') { e.preventDefault(); commitEdit(); }
           if (e.key === 'Escape') setEditing(null);
         }}
       />

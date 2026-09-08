@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import type { TriviaFacts } from '@/lib/db';
-import { MIN_FACTS, MAX_FACTS } from '@/lib/triviaConfig';
+import { MIN_FACTS, MAX_FACTS, MAX_FACT_LENGTH } from '@/lib/triviaConfig';
+import { GrowingTextarea } from './GrowingTextarea';
 import { Panel, SectionTitle } from './TriviaShared';
 import ExampleFacts from './ExampleFacts';
 
@@ -86,14 +87,14 @@ export default function FactsForm() {
       <p className="text-xs mb-2" style={{ color: 'var(--muted)' }}>{hint}</p>
       <div className="space-y-2">
         {list.map((value, i) => (
-          <input
+          <GrowingTextarea
             key={i}
-            type="text"
             className="w-full border-gray-400 rounded-md shadow-sm border px-3 py-2 text-gray-900 placeholder-gray-500"
             placeholder={i < MIN_FACTS ? placeholder : 'Optional'}
             value={value}
-            maxLength={200}
+            maxLength={MAX_FACT_LENGTH}
             onChange={(e) => updateAt(setter, list, i, e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
           />
         ))}
       </div>
