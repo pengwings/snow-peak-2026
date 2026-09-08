@@ -13,11 +13,14 @@ import {
   Countdown, Leaderboard, Panel, RevealBars, SectionTitle, letter, CORRECT, WRONG,
 } from '@/components/trivia/TriviaShared';
 
+/** How long to wait for an answer to be accepted before giving the buttons back. */
+const ANSWER_TIMEOUT_MS = 5000;
+
 export default function TriviaPage() {
   const router = useRouter();
   // View-only visitors get the spectator state from the server: they can watch but not answer.
   const { user, isAdmin, ready } = useSession();
-  const { state, error, timeLeftMs, apply } = useTriviaState(1500);
+  const { state, error, timeLeftMs, apply } = useTriviaState(1000);
   const [submitting, setSubmitting] = useState<number | null>(null);
   const [answerError, setAnswerError] = useState<string | null>(null);
 
@@ -30,15 +33,22 @@ export default function TriviaPage() {
     if (state.myAnswer?.choice === choice) return; // already on this option
     setSubmitting(choice);
     setAnswerError(null);
-    const res = await fetch('/api/trivia/answer', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ questionId: state.question.id, choice }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (data.state) apply(data.state);
-    if (!res.ok) setAnswerError(data.error || 'Could not submit your answer.');
-    setSubmitting(null);
+    try {
+      const res = await fetch('/api/trivia/answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId: state.question.id, choice }),
+        // Bail out on a hung request so the buttons don't stay disabled forever on bad wifi.
+        signal: AbortSignal.timeout(ANSWER_TIMEOUT_MS),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.state) apply(data.state);
+      if (!res.ok) setAnswerError(data.error || 'Could not submit your answer.');
+    } catch {
+      setAnswerError('Could not reach the server. Tap again.');
+    } finally {
+      setSubmitting(null);
+    }
   };
 
   if (!ready || !state) return <div className="p-8" style={{ color: 'var(--muted)' }}>Loading…</div>;

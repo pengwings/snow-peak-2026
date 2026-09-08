@@ -8,17 +8,28 @@ export type { TriviaClientState };
 /**
  * Polls the trivia state endpoint and keeps a locally ticking countdown in
  * between polls, re-synced from the server on every response.
+ *
+ * The server stamps `timeLeftMs` before the response travels back, so by the
+ * time it arrives the value is slightly stale (more so for the answer POST,
+ * which writes to the database first). Each response is therefore an upper
+ * bound on the real deadline; keeping the earliest deadline seen for the
+ * current question means the clock never jumps back up.
  */
-export function useTriviaState(intervalMs = 1500, spectator = false) {
+export function useTriviaState(intervalMs = 1000, spectator = false) {
   const [state, setState] = useState<TriviaClientState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [timeLeftMs, setTimeLeftMs] = useState(0);
-  // When the last server time-left was received, so the local clock can extrapolate.
-  const syncRef = useRef<{ at: number; leftMs: number }>({ at: 0, leftMs: 0 });
+  // Client-clock timestamp when the current question's clock hits zero.
+  const deadlineRef = useRef<{ questionId: string | null; at: number }>({ questionId: null, at: 0 });
 
   const apply = useCallback((next: TriviaClientState) => {
-    syncRef.current = { at: Date.now(), leftMs: next.timeLeftMs };
-    setTimeLeftMs(next.timeLeftMs);
+    const questionId = next.phase === 'question' ? next.question?.id ?? null : null;
+    const now = Date.now();
+    const candidate = now + next.timeLeftMs;
+    const prev = deadlineRef.current;
+    const at = questionId && prev.questionId === questionId ? Math.min(prev.at, candidate) : candidate;
+    deadlineRef.current = { questionId, at };
+    setTimeLeftMs(questionId ? Math.max(0, at - now) : 0);
     setState(next);
   }, []);
 
@@ -51,8 +62,7 @@ export function useTriviaState(intervalMs = 1500, spectator = false) {
   useEffect(() => {
     if (state?.phase !== 'question') return;
     const tick = setInterval(() => {
-      const { at, leftMs } = syncRef.current;
-      setTimeLeftMs(Math.max(0, leftMs - (Date.now() - at)));
+      setTimeLeftMs(Math.max(0, deadlineRef.current.at - Date.now()));
     }, 100);
     return () => clearInterval(tick);
   }, [state?.phase, state?.question?.id]);
