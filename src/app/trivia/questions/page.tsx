@@ -14,6 +14,7 @@ const emptyDraft = (): Draft => ({ text: '', options: ['', '', '', ''], correctI
 function SmallButton({ label, onClick, disabled, danger }: { label: string; onClick: () => void; disabled?: boolean; danger?: boolean }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
       className="px-2.5 py-1 text-[11px] tracking-widest uppercase disabled:opacity-30"
