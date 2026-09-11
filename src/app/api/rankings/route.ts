@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
-import { buildRankingsData, importTriviaGame, validateResults } from '@/lib/rankings';
+import { buildRankingsData, importTriviaGame, validateBonus, validateResults } from '@/lib/rankings';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +10,7 @@ export async function GET() {
   return NextResponse.json(await buildRankingsData(), { headers: { 'Cache-Control': 'no-store' } });
 }
 
-/** Admin only: record, edit, or delete a game, or import the finished trivia game. */
+/** Admin only: record, edit, or delete a game, import the finished trivia game, or hand out bonus points. */
 export async function POST(request: Request) {
   const user = await getSessionUser();
   if (!user?.isAdmin) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -44,6 +44,20 @@ export async function POST(request: Request) {
   if (action === 'delete') {
     if (typeof body.id !== 'string') return NextResponse.json({ error: 'id required' }, { status: 400 });
     await db.removeGame(body.id);
+    return NextResponse.json({ success: true, ...(await buildRankingsData()) });
+  }
+
+  if (action === 'awardBonus') {
+    const knownUsers = new Set((await db.getUsers()).map((u) => u.name));
+    const validated = validateBonus(body, knownUsers);
+    if ('error' in validated) return NextResponse.json({ error: validated.error }, { status: 400 });
+    await db.addBonusAward({ id: Math.random().toString(36).substring(7), ...validated });
+    return NextResponse.json({ success: true, ...(await buildRankingsData()) });
+  }
+
+  if (action === 'deleteBonus') {
+    if (typeof body.id !== 'string') return NextResponse.json({ error: 'id required' }, { status: 400 });
+    await db.removeBonusAward(body.id);
     return NextResponse.json({ success: true, ...(await buildRankingsData()) });
   }
 

@@ -7,8 +7,10 @@ import { displayName } from '@/lib/displayName';
 import { useSession } from '@/lib/useSession';
 import { GRAND_PRIX_POINTS, PARTICIPATION_POINTS, ordinal } from '@/lib/rankingsConfig';
 import type { GameWithPoints, RankingsData } from '@/lib/rankings';
+import type { BonusAward } from '@/lib/db';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
 import GameForm, { GameDraft } from '@/components/rankings/GameForm';
+import BonusForm, { BonusDraft } from '@/components/rankings/BonusForm';
 import { Panel, SectionTitle, WRONG } from '@/components/trivia/TriviaShared';
 
 const SERIF = { fontFamily: 'EB Garamond, Georgia, serif' } as const;
@@ -28,6 +30,7 @@ export default function RankingsPage() {
 
   const [editing, setEditing] = useState<GameWithPoints | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [bonusError, setBonusError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [formKey, setFormKey] = useState(0);
@@ -52,9 +55,10 @@ export default function RankingsPage() {
       .catch(() => {});
   }, [load]);
 
-  const post = async (body: Record<string, unknown>) => {
+  const post = async (body: Record<string, unknown>, setError = setFormError) => {
     setSaving(true);
     setFormError(null);
+    setBonusError(null);
     setNotice(null);
     const res = await fetch('/api/rankings', {
       method: 'POST',
@@ -64,7 +68,7 @@ export default function RankingsPage() {
     const json = await res.json().catch(() => ({}));
     setSaving(false);
     if (!res.ok) {
-      setFormError(json.error || 'That didn’t work.');
+      setError(json.error || 'That didn’t work.');
       return false;
     }
     setData(json);
@@ -106,6 +110,19 @@ export default function RankingsPage() {
     if (await post({ action: 'importTrivia' })) setNotice('Recorded the trivia results.');
   };
 
+  const awardBonus = async (draft: BonusDraft) => {
+    const points = parseInt(draft.points, 10);
+    const ok = await post({ action: 'awardBonus', username: draft.username, points, reason: draft.reason }, setBonusError);
+    if (ok) setNotice(points < 0 ? `Took ${-points} points from ${displayName(draft.username)}.` : `Gave ${displayName(draft.username)} ${points} points.`);
+    return ok;
+  };
+
+  const deleteBonus = async (award: BonusAward) => {
+    const what = `${award.points > 0 ? '+' : ''}${award.points} for ${displayName(award.username)}`;
+    if (!window.confirm(`Remove the ${what}${award.reason ? ` (${award.reason})` : ''}?`)) return;
+    if (await post({ action: 'deleteBonus', id: award.id }, setBonusError)) setNotice(`Removed ${what}.`);
+  };
+
   const initialDraft = useMemo<GameDraft>(() => {
     if (!editing) return { name: '', places: {} };
     const places: Record<string, string> = {};
@@ -116,7 +133,9 @@ export default function RankingsPage() {
   if (!ready || (!data && !loadError)) return <div className="p-8" style={{ color: 'var(--muted)' }}>Loading…</div>;
 
   const games = data?.games ?? [];
+  const bonuses = data?.bonuses ?? [];
   const standings = data?.standings ?? [];
+  const anyBonus = bonuses.length > 0;
   const leader = standings[0];
   const anyPoints = standings.some((s) => s.total > 0);
 
@@ -130,7 +149,8 @@ export default function RankingsPage() {
       <p className="text-sm mb-8 max-w-2xl" style={{ color: 'var(--muted)' }}>
         Every game we play on the trip counts. Finish 1st for {GRAND_PRIX_POINTS[0]} points, 2nd for {GRAND_PRIX_POINTS[1]},
         3rd for {GRAND_PRIX_POINTS[2]}, then one fewer for each place down to {ordinal(GRAND_PRIX_POINTS.length)} ({GRAND_PRIX_POINTS[GRAND_PRIX_POINTS.length - 1]}).
-        Anyone further back still picks up {PARTICIPATION_POINTS} for playing. Most points at the end of the trip wins.
+        Anyone further back still picks up {PARTICIPATION_POINTS} for playing. Bonus points may be handed out at the
+        organisers&apos; whim. Most points at the end of the trip wins.
       </p>
 
       {loadError && <p className="text-sm mb-6" style={{ color: WRONG }}>{loadError}</p>}
@@ -155,7 +175,7 @@ export default function RankingsPage() {
       <div className="mb-10">
         <SectionTitle>Standings</SectionTitle>
         <div className="overflow-x-auto" style={{ border: '1px solid var(--border)', background: 'var(--card)' }}>
-          <table className="w-full text-sm" style={{ minWidth: games.length > 0 ? 360 + games.length * 72 : undefined }}>
+          <table className="w-full text-sm" style={{ minWidth: games.length > 0 ? 360 + (games.length + (anyBonus ? 1 : 0)) * 72 : undefined }}>
             <thead>
               <tr className="text-[11px] tracking-widest uppercase" style={{ color: 'var(--muted)', borderBottom: '1px solid var(--border)' }}>
                 <th className="text-left font-medium px-4 py-2.5 w-12">#</th>
@@ -165,12 +185,13 @@ export default function RankingsPage() {
                     {g.name}
                   </th>
                 ))}
+                {anyBonus && <th className="text-center font-medium px-2 py-2.5 whitespace-nowrap">Bonus</th>}
                 <th className="text-right font-medium px-4 py-2.5 w-20 sticky right-0" style={{ background: 'var(--card)' }}>Total</th>
               </tr>
             </thead>
             <tbody>
               {standings.length === 0 && (
-                <tr><td colSpan={3 + games.length} className="p-4 italic" style={{ color: 'var(--muted)' }}>No one on the guest list yet.</td></tr>
+                <tr><td colSpan={3 + games.length + (anyBonus ? 1 : 0)} className="p-4 italic" style={{ color: 'var(--muted)' }}>No one on the guest list yet.</td></tr>
               )}
               {standings.map((row) => {
                 const isMe = row.name === user;
@@ -201,6 +222,17 @@ export default function RankingsPage() {
                         </td>
                       );
                     })}
+                    {anyBonus && (
+                      <td className="px-2 py-2.5 text-center tabular-nums">
+                        {row.bonus !== 0 ? (
+                          <span className="text-xs font-medium" style={{ color: row.bonus > 0 ? '#2d6a4f' : WRONG }}>
+                            {row.bonus > 0 ? '+' : ''}{row.bonus}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--border)' }}>–</span>
+                        )}
+                      </td>
+                    )}
                     {/* Pinned so the total stays visible while game columns scroll on narrow screens */}
                     <td
                       className="px-4 py-2.5 text-right tabular-nums font-semibold text-base sticky right-0"
@@ -249,6 +281,44 @@ export default function RankingsPage() {
             />
           </Panel>
           {notice && <p className="text-sm mt-3" style={{ color: '#2d6a4f' }}>{notice}</p>}
+        </div>
+      )}
+
+      {/* Admin: hand out points outside of any game */}
+      {isAdmin && (
+        <div className="mb-10">
+          <SectionTitle>Give bonus points</SectionTitle>
+          <Panel>
+            <BonusForm users={users} saving={saving} error={bonusError} onSubmit={awardBonus} />
+          </Panel>
+        </div>
+      )}
+
+      {/* Bonus point history, shown to everyone once anything has been awarded */}
+      {anyBonus && (
+        <div className="mb-10">
+          <SectionTitle>Bonus points</SectionTitle>
+          <Panel className="!p-0">
+            <ul className="text-sm">
+              {[...bonuses].reverse().map((award) => (
+                <li key={award.id} className="flex items-center gap-3 px-5 py-2.5" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <span className="w-12 tabular-nums font-medium shrink-0" style={{ color: award.points > 0 ? '#2d6a4f' : WRONG }}>
+                    {award.points > 0 ? '+' : ''}{award.points}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span style={{ fontWeight: award.username === user ? 600 : 400 }}>{displayName(award.username)}</span>
+                    {award.reason && <span className="ml-2" style={{ color: 'var(--muted)' }}>{award.reason}</span>}
+                  </span>
+                  <span className="text-xs whitespace-nowrap shrink-0" style={{ color: 'var(--muted)' }}>{formatDate(award.awardedAt)}</span>
+                  {isAdmin && (
+                    <button onClick={() => deleteBonus(award)} title="Remove these points" className="p-1.5 shrink-0" style={{ color: WRONG }}>
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </Panel>
         </div>
       )}
 

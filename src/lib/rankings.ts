@@ -1,10 +1,13 @@
-import { db, Game, GameResult } from './db';
+import { db, BonusAward, Game, GameResult } from './db';
 import { computeLeaderboard, getLiveGameState } from './trivia';
 import { pointsForPlace } from './rankingsConfig';
 
 export type StandingsRow = {
   name: string;
+  /** Game points plus bonus points. */
   total: number;
+  /** Net bonus points awarded outside of any game. */
+  bonus: number;
   /** Games this player has a recorded place in. */
   played: number;
   /** Count of each finishing place, used for countback tiebreaks: finishes[0] = wins. */
@@ -21,6 +24,7 @@ export type GameWithPoints = Omit<Game, 'results'> & {
 
 export type RankingsData = {
   games: GameWithPoints[];
+  bonuses: BonusAward[];
   standings: StandingsRow[];
   /** True while the trivia game is showing standings or finished, so its result can be recorded. */
   triviaImportable: boolean;
@@ -46,15 +50,16 @@ function compareFinishes(a: number[], b: number[]): number {
 }
 
 /**
- * Season standings across every recorded game. Everyone in `players` is
- * listed even with no games yet, so the table shows the whole group.
+ * Season standings across every recorded game plus any bonus points. Everyone
+ * in `players` is listed even with no games yet, so the table shows the whole
+ * group. Bonus points count toward the total but not the countback tiebreak.
  */
-export function computeStandings(games: Game[], players: string[]): StandingsRow[] {
+export function computeStandings(games: Game[], players: string[], bonuses: BonusAward[] = []): StandingsRow[] {
   const rows = new Map<string, StandingsRow>();
   const rowFor = (name: string) => {
     let row = rows.get(name);
     if (!row) {
-      row = { name, total: 0, played: 0, finishes: [], position: 0, perGame: {} };
+      row = { name, total: 0, bonus: 0, played: 0, finishes: [], position: 0, perGame: {} };
       rows.set(name, row);
     }
     return row;
@@ -70,6 +75,11 @@ export function computeStandings(games: Game[], players: string[]): StandingsRow
       row.finishes[r.place - 1] = (row.finishes[r.place - 1] ?? 0) + 1;
       row.perGame[game.id] = { place: r.place, points };
     }
+  }
+  for (const b of bonuses) {
+    const row = rowFor(b.username);
+    row.bonus += b.points;
+    row.total += b.points;
   }
 
   const sorted = [...rows.values()]
@@ -90,12 +100,32 @@ export async function isTriviaImportable(): Promise<boolean> {
 }
 
 export async function buildRankingsData(): Promise<RankingsData> {
-  const [games, users, triviaImportable] = await Promise.all([db.getGames(), db.getUsers(), isTriviaImportable()]);
+  const [games, bonuses, users, triviaImportable] = await Promise.all([
+    db.getGames(),
+    db.getBonusAwards(),
+    db.getUsers(),
+    isTriviaImportable(),
+  ]);
   return {
     games: games.map(withPoints),
-    standings: computeStandings(games, users.map((u) => u.name)),
+    bonuses,
+    standings: computeStandings(games, users.map((u) => u.name), bonuses),
     triviaImportable,
   };
+}
+
+/** Validates a bonus award: a known player and a non-zero whole number of points. */
+export function validateBonus(
+  input: { username?: unknown; points?: unknown; reason?: unknown },
+  knownUsers: Set<string>
+): { username: string; points: number; reason: string } | { error: string } {
+  const username = typeof input.username === 'string' ? input.username : '';
+  const points = Number(input.points);
+  const reason = typeof input.reason === 'string' ? input.reason.trim() : '';
+  if (!knownUsers.has(username)) return { error: `Unknown player: ${username || '(blank)'}` };
+  if (!Number.isInteger(points) || points === 0) return { error: 'Points must be a whole number other than 0' };
+  if (Math.abs(points) > 1000) return { error: 'That is a lot of points. Keep it under 1000.' };
+  return { username, points, reason };
 }
 
 /** Validates a submitted results list: known players, positive integer places, no duplicates. */

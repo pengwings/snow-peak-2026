@@ -200,6 +200,17 @@ async function init() {
       PRIMARY KEY (game_id, username)
     );
   `;
+  // Rankings: arbitrary bonus (or penalty) points an admin hands out outside
+  // of any game, e.g. for winning a bet or being the best sport.
+  await sql`
+    CREATE TABLE IF NOT EXISTS bonus_points (
+      id TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      points INTEGER NOT NULL,
+      reason TEXT NOT NULL DEFAULT '',
+      awarded_at TIMESTAMPTZ DEFAULT now()
+    );
+  `;
 
   // Seed the campground-provided items if none exist yet
   const providedCount = await sql<{ count: string }>`SELECT count(*) FROM packing_items WHERE provided = true`;

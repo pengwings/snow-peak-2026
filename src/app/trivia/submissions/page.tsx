@@ -8,13 +8,13 @@ import { displayName } from '@/lib/displayName';
 import { Download } from 'lucide-react';
 import { SectionTitle, WRONG, CORRECT } from '@/components/trivia/TriviaShared';
 import { buildTriviaPrompt } from '@/lib/triviaPrompt';
-import { MAX_FACT_LENGTH } from '@/lib/triviaConfig';
+import { MAX_FACTS, MAX_FACT_LENGTH } from '@/lib/triviaConfig';
 import { GrowingTextarea } from '@/components/trivia/GrowingTextarea';
 
 type FactKey = 'selfFacts' | 'hobbyFacts';
 type Editing = { username: string; field: FactKey | 'hobby'; index: number; value: string } | null;
 
-/** Admin page: everyone's submitted facts, each editable or deletable in place. */
+/** Admin page: everyone's submitted facts, each editable or deletable in place, with room to add more. */
 export default function TriviaSubmissionsPage() {
   const router = useRouter();
   const [me, setMe] = useState<{ user: string | null; isAdmin: boolean } | null>(null);
@@ -72,12 +72,20 @@ export default function TriviaSubmissionsPage() {
     if (editing.field === 'hobby') {
       if (value) await update(f, { hobby: value });
     } else {
+      // An index past the end is a new fact being added; an emptied value removes the fact.
       const list = [...f[editing.field]];
       if (value) list[editing.index] = value;
       else list.splice(editing.index, 1);
-      await update(f, { [editing.field]: list });
+      await update(f, { [editing.field]: list.slice(0, MAX_FACTS) });
     }
     setEditing(null);
+  };
+
+  const startSubmission = async (username: string) => {
+    const hobby = window.prompt(`Start a submission for ${displayName(username)}. What's their hobby or interest?`, '');
+    if (hobby === null) return;
+    const ok = await save({ action: 'adminCreate', username, hobby });
+    if (ok) setMissing((m) => m.filter((n) => n !== username));
   };
 
   const deleteFact = async (f: TriviaFacts, field: FactKey, index: number) => {
@@ -155,6 +163,20 @@ export default function TriviaSubmissionsPage() {
     </span>
   );
 
+  /** "Add fact" row, or the editor when a new fact is being typed. Hidden once the list is full. */
+  const addRow = (f: TriviaFacts, field: FactKey) => {
+    const index = f[field].length;
+    if (index >= MAX_FACTS) return null;
+    return (
+      <li key="add" className="flex gap-3 items-center text-sm min-h-[28px]">
+        <span className="w-4 text-xs tabular-nums" style={{ color: 'var(--muted)' }}>{isEditing(f.username, field, index) ? `${index + 1}.` : ''}</span>
+        {isEditing(f.username, field, index)
+          ? editor
+          : <MiniButton label="+ Add fact" onClick={() => setEditing({ username: f.username, field, index, value: '' })} />}
+      </li>
+    );
+  };
+
   const factRow = (f: TriviaFacts, field: FactKey, index: number) => {
     const fact = f[field][index];
     return (
@@ -188,9 +210,17 @@ export default function TriviaSubmissionsPage() {
         </span>
       </div>
       {missing.length > 0 && (
-        <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>
-          Still waiting on: {missing.map(displayName).join(', ')}
-        </p>
+        <div className="text-sm mb-4" style={{ color: 'var(--muted)' }}>
+          <p className="mb-1">Still waiting on:</p>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1">
+            {missing.map((name) => (
+              <li key={name} className="flex items-center gap-2">
+                <span>{displayName(name)}</span>
+                <MiniButton label="Start for them" onClick={() => startSubmission(name)} />
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       <div className="p-4 mb-8" style={{ border: '1px dashed var(--border)', background: 'var(--card)' }}>
         <div className="flex flex-wrap items-center gap-3">
@@ -230,12 +260,13 @@ export default function TriviaSubmissionsPage() {
             <p className="text-[10px] tracking-widest uppercase mb-1" style={{ color: 'var(--muted)' }}>About them</p>
             <ul className="space-y-1 mb-4">
               {f.selfFacts.map((_, i) => factRow(f, 'selfFacts', i))}
-              {f.selfFacts.length === 0 && <li className="text-xs italic" style={{ color: 'var(--muted)' }}>No facts left.</li>}
+              {f.selfFacts.length === 0 && !isEditing(f.username, 'selfFacts', 0) && <li className="text-xs italic" style={{ color: 'var(--muted)' }}>No facts yet.</li>}
+              {addRow(f, 'selfFacts')}
             </ul>
 
             <div className="flex items-center gap-2 mb-1 min-h-[28px]">
               <p className="text-[10px] tracking-widest uppercase" style={{ color: 'var(--muted)' }}>
-                About {isEditing(f.username, 'hobby', 0) ? '' : f.hobby}
+                About {isEditing(f.username, 'hobby', 0) ? '' : f.hobby || <span className="italic normal-case tracking-normal">(no hobby yet)</span>}
               </p>
               {isEditing(f.username, 'hobby', 0)
                 ? editor
@@ -243,7 +274,8 @@ export default function TriviaSubmissionsPage() {
             </div>
             <ul className="space-y-1">
               {f.hobbyFacts.map((_, i) => factRow(f, 'hobbyFacts', i))}
-              {f.hobbyFacts.length === 0 && <li className="text-xs italic" style={{ color: 'var(--muted)' }}>No facts left.</li>}
+              {f.hobbyFacts.length === 0 && !isEditing(f.username, 'hobbyFacts', 0) && <li className="text-xs italic" style={{ color: 'var(--muted)' }}>No facts yet.</li>}
+              {addRow(f, 'hobbyFacts')}
             </ul>
           </div>
         ))}

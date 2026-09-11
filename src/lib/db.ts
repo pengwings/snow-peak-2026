@@ -127,6 +127,15 @@ export type Game = {
   results: GameResult[];
 };
 
+export type BonusAward = {
+  id: string;
+  username: string;
+  /** Can be negative to dock points. */
+  points: number;
+  reason: string;
+  awardedAt: string;
+};
+
 export type TriviaPhase = 'idle' | 'lobby' | 'question' | 'reveal' | 'leaderboard' | 'finished';
 
 export type TriviaGameState = {
@@ -157,6 +166,7 @@ type TriviaAnswerRow = { question_id: string; username: string; choice: number; 
 type TriviaPlayerRow = { username: string };
 type GameRow = { id: string; name: string; source: string | null; played_at: Date | string | null };
 type GameResultRow = { game_id: string; username: string; place: number };
+type BonusAwardRow = { id: string; username: string; points: number; reason: string | null; awarded_at: Date | string | null };
 
 const TRIVIA_GAME_KEY = 'trivia_game';
 const TRIVIA_FACTS_OPEN_KEY = 'trivia_facts_open';
@@ -553,6 +563,24 @@ export const db = {
   async removeGame(id: string) {
     await sql`DELETE FROM game_results WHERE game_id = ${id}`;
     await sql`DELETE FROM games WHERE id = ${id}`;
+  },
+
+  // ---- Rankings: bonus points awarded outside of any game ----
+  async getBonusAwards(): Promise<BonusAward[]> {
+    const rows = await sql<BonusAwardRow>`SELECT * FROM bonus_points ORDER BY awarded_at, id`;
+    return rows.map((r: BonusAwardRow) => ({
+      id: r.id,
+      username: r.username,
+      points: r.points,
+      reason: r.reason ?? '',
+      awardedAt: r.awarded_at instanceof Date ? r.awarded_at.toISOString() : (r.awarded_at ?? new Date().toISOString()),
+    }));
+  },
+  async addBonusAward(award: Omit<BonusAward, 'awardedAt'>) {
+    await sql`INSERT INTO bonus_points (id, username, points, reason) VALUES (${award.id}, ${award.username}, ${award.points}, ${award.reason})`;
+  },
+  async removeBonusAward(id: string) {
+    await sql`DELETE FROM bonus_points WHERE id = ${id}`;
   },
 };
 

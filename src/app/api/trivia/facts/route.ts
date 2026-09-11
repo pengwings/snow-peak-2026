@@ -35,7 +35,18 @@ export async function POST(request: Request) {
   const body = await request.json();
 
   // Admin edits bypass the open/closed gate and the minimum count, so a
-  // submission can be trimmed or removed outright.
+  // submission can be trimmed, added to, or removed outright.
+  if (body.action === 'adminCreate') {
+    if (!user.isAdmin) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    const username = typeof body.username === 'string' ? body.username : '';
+    const known = (await db.getUsers()).some((u) => u.name === username);
+    if (!known) return NextResponse.json({ error: 'Unknown player' }, { status: 400 });
+    if (await db.getTriviaFacts(username)) return NextResponse.json({ error: 'They already have a submission' }, { status: 409 });
+    const hobby = typeof body.hobby === 'string' ? body.hobby.trim() : '';
+    await db.saveTriviaFacts({ username, hobby, selfFacts: [], hobbyFacts: [], updatedAt: null });
+    return NextResponse.json({ success: true, all: await db.getAllTriviaFacts() });
+  }
+
   if (body.action === 'adminUpdate' || body.action === 'adminDelete') {
     if (!user.isAdmin) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     const username = typeof body.username === 'string' ? body.username : '';
