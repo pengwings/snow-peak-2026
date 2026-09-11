@@ -10,8 +10,11 @@ The root is an object with a `questions` list (a bare list is also accepted).
 |-----------|----------|---------|
 | `text`    | yes      | The question as shown on the projector and phones. |
 | `options` | no       | A list of 2–20 answer choices, **or** the string `"players"` to use every guest's name (for "who said this?" questions). Defaults to `"players"` when omitted. |
-| `answer`  | usually  | The correct choice, given as the option text (case-insensitive) or its 0-based index. When `options` is `"players"`, it defaults to `about`. |
+| `answer`  | usually  | The correct choice, given as the option text (case-insensitive) or its 0-based index. When `options` is `"players"`, it defaults to `about`. A **list** of choices makes a "select all that apply" question. |
+| `multi`   | no       | `true` marks a "select all that apply" question. Implied when `answer` is a list; set it explicitly only for a multi-select question with a single correct option. |
 | `about`   | no       | The guest the question is about, shown on the reveal. **Required** when `options` is `"players"`. Must match a guest's name (case and accents are ignored). |
+
+Multi-select questions are scored all-or-nothing: a player earns the point only when their picks exactly match the answer list.
 
 Questions are imported in the order they appear. Choose **Append** to add them after the existing questions or **Replace all** to start over. Nothing is imported if any question fails validation; the page lists every problem by question number.
 
@@ -36,6 +39,12 @@ Questions are imported in the order they appear. Choose **Append** to add them a
       "options": ["The Bongcloud", "The Sandcastle", "The Lighthouse", "The Teapot"],
       "answer": 0,
       "about": "Bob"
+    },
+    {
+      "text": "Which of these are climbing knots?",
+      "options": ["Figure eight", "Bowline", "Half hitch", "Windsor"],
+      "answer": ["Figure eight", "Bowline"],
+      "about": "Alice"
     }
   ]
 }
@@ -64,6 +73,12 @@ Write multiple-choice questions and output them ONLY as JSON in exactly this sha
       "options": ["<choice>", "<choice>", "<choice>", "<choice>"],
       "answer": "<the correct choice, copied exactly from options>",
       "about": "<guest name>"
+    },
+    {
+      "text": "<question text>",
+      "options": ["<choice>", "<choice>", "<choice>", "<choice>"],
+      "answer": ["<correct choice>", "<correct choice>"],
+      "about": "<guest name>"
     }
   ]
 }
@@ -71,6 +86,7 @@ Write multiple-choice questions and output them ONLY as JSON in exactly this sha
 Rules:
 - For each guest, turn 2 of their personal facts into questions of the form "Who said: '<fact>'?" using "options": "players". Quote the fact verbatim in the question text. The guest who submitted it goes in "about".
 - For each guest, turn 2 of their hobby facts into four-option questions. Make the three wrong choices plausible and the same length and style as the right one. Never reuse a wrong choice from another question. The guest whose hobby it is goes in "about".
+- When a hobby fact naturally has several right answers, you may give "answer" as a list of two or more options. That makes a "select all that apply" question, scored only when the player picks exactly that set. Use this sparingly (at most a few per game) and keep four options.
 - "about" and "answer" must match a guest name or option exactly as written.
 - Shuffle the order so consecutive questions are about different guests.
 - Use everyday language; each question text should fit on one projector line (under 100 characters).

@@ -8,8 +8,8 @@ import type { TriviaQuestion, User } from '@/lib/db';
 import { displayName } from '@/lib/displayName';
 import { Panel, SectionTitle, letter, CORRECT, WRONG } from '@/components/trivia/TriviaShared';
 
-type Draft = { text: string; options: string[]; correctIndex: number; about: string };
-const emptyDraft = (): Draft => ({ text: '', options: ['', '', '', ''], correctIndex: 0, about: '' });
+type Draft = { text: string; options: string[]; correctIndexes: number[]; multi: boolean; about: string };
+const emptyDraft = (): Draft => ({ text: '', options: ['', '', '', ''], correctIndexes: [0], multi: false, about: '' });
 
 function SmallButton({ label, onClick, disabled, danger }: { label: string; onClick: () => void; disabled?: boolean; danger?: boolean }) {
   return (
@@ -32,10 +32,16 @@ const IMPORT_EXAMPLE = `{
       "options": ["Calcium", "Magnesium carbonate", "Talc", "Flour"],
       "answer": "Magnesium carbonate",
       "about": "Alice"
+    },
+    {
+      "text": "Which of these are climbing knots?",
+      "options": ["Figure eight", "Bowline", "Half hitch", "Windsor"],
+      "answer": ["Figure eight", "Bowline"]
     }
   ]
 }
-"options": "players" means every guest's name, with "about" as the answer.`;
+"options": "players" means every guest's name, with "about" as the answer.
+A list of answers makes a "select all that apply" question.`;
 
 /** Admin page: write, import, and order the questions. */
 export default function TriviaQuestionsPage() {
@@ -95,7 +101,7 @@ export default function TriviaQuestionsPage() {
 
   const startEdit = (q: TriviaQuestion) => {
     setEditingId(q.id);
-    setDraft({ text: q.text, options: [...q.options], correctIndex: q.correctIndex, about: q.about ?? '' });
+    setDraft({ text: q.text, options: [...q.options], correctIndexes: [...q.correctIndexes], multi: q.multi, about: q.about ?? '' });
     setFormError(null);
     scrollToForm();
   };
@@ -139,7 +145,8 @@ export default function TriviaQuestionsPage() {
       questions: questions.map((q) => ({
         text: q.text,
         options: q.options,
-        answer: q.options[q.correctIndex],
+        answer: q.multi ? q.correctIndexes.map((i) => q.options[i]) : q.options[q.correctIndexes[0]],
+        ...(q.multi ? { multi: true } : {}),
         ...(q.about ? { about: q.about } : {}),
       })),
     };
@@ -156,16 +163,17 @@ export default function TriviaQuestionsPage() {
     e.preventDefault();
     setSaving(true);
     setFormError(null);
-    // Drop blank options but keep the correct one pointing at the same text.
-    const correctText = draft.options[draft.correctIndex]?.trim();
+    // Drop blank options but keep the correct ones pointing at the same text.
+    const correctTexts = draft.correctIndexes.map((i) => draft.options[i]?.trim()).filter(Boolean);
     const options = draft.options.map((o) => o.trim()).filter(Boolean);
-    const correctIndex = options.indexOf(correctText);
+    const correctIndexes = correctTexts.map((t) => options.indexOf(t)).filter((i) => i >= 0);
     const result = await post({
       action: editingId ? 'edit' : 'add',
       questionId: editingId,
       text: draft.text,
       options,
-      correctIndex,
+      correctIndexes,
+      multi: draft.multi,
       about: draft.about || null,
     });
     setSaving(false);
@@ -191,9 +199,19 @@ export default function TriviaQuestionsPage() {
   };
   const removeOption = (i: number) => {
     const options = draft.options.filter((_, j) => j !== i);
-    const correctIndex = draft.correctIndex === i ? 0 : draft.correctIndex > i ? draft.correctIndex - 1 : draft.correctIndex;
-    setDraft({ ...draft, options, correctIndex });
+    const shifted = draft.correctIndexes.filter((c) => c !== i).map((c) => (c > i ? c - 1 : c));
+    setDraft({ ...draft, options, correctIndexes: shifted.length ? shifted : [0] });
   };
+  const toggleCorrect = (i: number) => {
+    if (!draft.multi) return setDraft({ ...draft, correctIndexes: [i] });
+    const correctIndexes = draft.correctIndexes.includes(i)
+      ? draft.correctIndexes.filter((c) => c !== i)
+      : [...draft.correctIndexes, i].sort((a, b) => a - b);
+    setDraft({ ...draft, correctIndexes });
+  };
+  /** Switching multi off keeps only the first ticked option. */
+  const setMulti = (multi: boolean) =>
+    setDraft({ ...draft, multi, correctIndexes: multi ? draft.correctIndexes : draft.correctIndexes.slice(0, 1) });
 
   if (!me) return <div className="p-8" style={{ color: 'var(--muted)' }}>Loading…</div>;
 
@@ -240,16 +258,24 @@ export default function TriviaQuestionsPage() {
                   onChange={(e) => setDraft({ ...draft, text: e.target.value })}
                 />
                 <div>
-                  <p className="text-xs tracking-widest uppercase mb-2" style={{ color: 'var(--muted)' }}>Options · tick the correct one</p>
+                  <div className="flex flex-wrap justify-between items-baseline gap-2 mb-2">
+                    <p className="text-xs tracking-widest uppercase" style={{ color: 'var(--muted)' }}>
+                      Options · tick the correct {draft.multi ? 'ones' : 'one'}
+                    </p>
+                    <label className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--foreground)' }}>
+                      <input type="checkbox" checked={draft.multi} onChange={(e) => setMulti(e.target.checked)} />
+                      Multiple answers (select all that apply)
+                    </label>
+                  </div>
                   <div className="space-y-2">
                     {draft.options.map((option, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <input
-                          type="radio"
+                          type={draft.multi ? 'checkbox' : 'radio'}
                           name="correct"
-                          checked={draft.correctIndex === i}
-                          onChange={() => setDraft({ ...draft, correctIndex: i })}
-                          title="Correct answer"
+                          checked={draft.correctIndexes.includes(i)}
+                          onChange={() => toggleCorrect(i)}
+                          title={draft.multi ? 'Correct answer (tick every one that applies)' : 'Correct answer'}
                         />
                         <span className="w-5 text-xs font-semibold" style={{ color: 'var(--muted)' }}>{letter(i)}</span>
                         <input
@@ -389,11 +415,14 @@ export default function TriviaQuestionsPage() {
                     <div className="flex gap-3">
                       <span className="text-xs tabular-nums pt-1 w-6" style={{ color: 'var(--muted)' }}>{i + 1}.</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium mb-1">{q.text}</p>
+                        <p className="text-sm font-medium mb-1">
+                          {q.text}
+                          {q.multi && <span className="ml-2 text-[10px] tracking-widest uppercase font-normal" style={{ color: 'var(--accent)' }}>Multi</span>}
+                        </p>
                         <p className="text-xs" style={{ color: 'var(--muted)' }}>
                           {q.options.map((o, j) => (
-                            <span key={j} className="mr-3" style={{ color: j === q.correctIndex ? CORRECT : undefined }}>
-                              {letter(j)}. {o}{j === q.correctIndex ? ' ✓' : ''}
+                            <span key={j} className="mr-3" style={{ color: q.correctIndexes.includes(j) ? CORRECT : undefined }}>
+                              {letter(j)}. {o}{q.correctIndexes.includes(j) ? ' ✓' : ''}
                             </span>
                           ))}
                         </p>

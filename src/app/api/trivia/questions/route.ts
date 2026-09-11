@@ -6,6 +6,14 @@ import { normalizeName } from '@/lib/nameMatch';
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 20;
 
+/** Sorted, de-duplicated indexes, or null if any entry is not a valid option index. */
+function cleanIndexes(raw: unknown, optionCount: number): number[] | null {
+  if (!Array.isArray(raw)) return null;
+  const unique = [...new Set(raw)];
+  if (unique.some((i) => typeof i !== 'number' || !Number.isInteger(i) || i < 0 || i >= optionCount)) return null;
+  return (unique as number[]).sort((a, b) => a - b);
+}
+
 function parseQuestion(body: Record<string, unknown>): { question: Omit<TriviaQuestion, 'id' | 'position'> } | { error: string } {
   const text = typeof body.text === 'string' ? body.text.trim() : '';
   if (!text) return { error: 'Question text is required.' };
@@ -17,13 +25,13 @@ function parseQuestion(body: Record<string, unknown>): { question: Omit<TriviaQu
     return { error: `Give ${MIN_OPTIONS} to ${MAX_OPTIONS} answer options.` };
   }
 
-  const correctIndex = body.correctIndex;
-  if (typeof correctIndex !== 'number' || !Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex >= options.length) {
-    return { error: 'Pick which option is correct.' };
-  }
+  const multi = body.multi === true;
+  const correctIndexes = cleanIndexes(body.correctIndexes ?? (typeof body.correctIndex === 'number' ? [body.correctIndex] : null), options.length);
+  if (!correctIndexes || correctIndexes.length === 0) return { error: 'Pick which option is correct.' };
+  if (!multi && correctIndexes.length !== 1) return { error: 'Tick "multiple answers" to mark more than one option correct.' };
 
   const about = typeof body.about === 'string' && body.about.trim() ? body.about.trim() : null;
-  return { question: { text, options, correctIndex, about } };
+  return { question: { text, options, correctIndexes, multi, about } };
 }
 
 
@@ -98,29 +106,46 @@ function parseImport(content: string, names: string[]): { questions: ImportedQue
       return;
     }
 
-    // Answer: option text, 0-based index, or (for player questions) the "about" guest.
-    const rawAnswer = item.answer ?? item.correctIndex;
-    let correctIndex = -1;
-    if (rawAnswer === undefined || rawAnswer === null || rawAnswer === '') {
-      if (usesPlayers && about) correctIndex = options.indexOf(about);
+    // One answer: option text, 0-based index, or (for player questions) the "about" guest.
+    const resolveAnswer = (raw: unknown): number => {
+      if (typeof raw === 'number') return Number.isInteger(raw) ? raw : -1;
+      if (typeof raw !== 'string') return -1;
+      const target = normalizeName(raw);
+      const index = options.findIndex((o) => normalizeName(o) === target);
+      // A numeric string like "2" is treated as an index if it isn't an option.
+      return index < 0 && /^\d+$/.test(raw.trim()) ? parseInt(raw, 10) : index;
+    };
+
+    // A list of answers makes a "select all that apply" question; "multi": true does too,
+    // so a multi-select with a single correct option is still possible.
+    const rawAnswer = item.answer ?? item.correctIndex ?? item.correctIndexes;
+    const multi = item.multi === true || Array.isArray(rawAnswer);
+    if (item.multi !== undefined && typeof item.multi !== 'boolean') {
+      errors.push(`Question ${n}: "multi" must be true or false.`);
+      return;
+    }
+    let correctIndexes: number[];
+    if (rawAnswer === undefined || rawAnswer === null || rawAnswer === '' || (Array.isArray(rawAnswer) && rawAnswer.length === 0)) {
+      if (usesPlayers && about) correctIndexes = [options.indexOf(about)];
       else {
         errors.push(`Question ${n}: missing "answer".`);
         return;
       }
-    } else if (typeof rawAnswer === 'number') {
-      correctIndex = Number.isInteger(rawAnswer) ? rawAnswer : -1;
-    } else if (typeof rawAnswer === 'string') {
-      const target = normalizeName(rawAnswer);
-      correctIndex = options.findIndex((o) => normalizeName(o) === target);
-      // A numeric string like "2" is treated as an index if it isn't an option.
-      if (correctIndex < 0 && /^\d+$/.test(rawAnswer.trim())) correctIndex = parseInt(rawAnswer, 10);
-    }
-    if (correctIndex < 0 || correctIndex >= options.length) {
-      errors.push(`Question ${n}: answer "${String(rawAnswer)}" doesn't match any option.`);
-      return;
+    } else {
+      const rawList = Array.isArray(rawAnswer) ? rawAnswer : [rawAnswer];
+      correctIndexes = [];
+      for (const raw of rawList) {
+        const index = resolveAnswer(raw);
+        if (index < 0 || index >= options.length) {
+          errors.push(`Question ${n}: answer "${String(raw)}" doesn't match any option.`);
+          return;
+        }
+        if (!correctIndexes.includes(index)) correctIndexes.push(index);
+      }
+      correctIndexes.sort((a, b) => a - b);
     }
 
-    questions.push({ text, options, correctIndex, about });
+    questions.push({ text, options, correctIndexes, multi, about });
   });
 
   return errors.length ? { errors } : { questions };

@@ -74,7 +74,10 @@ export default function TriviaBoardPage() {
           </p>
         </div>
         <div className="mb-8"><Countdown leftMs={timeLeftMs} totalSeconds={state.questionSeconds} big /></div>
-        <h1 className="text-5xl leading-tight font-normal mb-10" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>{state.question.text}</h1>
+        <h1 className={`text-5xl leading-tight font-normal ${state.question.multi ? 'mb-4' : 'mb-10'}`} style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>{state.question.text}</h1>
+        {state.question.multi && (
+          <p className="text-xl tracking-widest uppercase mb-8" style={{ color: 'var(--accent)' }}>Select all that apply</p>
+        )}
         <div className={`grid gap-4 ${many ? 'grid-cols-3' : 'grid-cols-2'}`}>
           {state.question.options.map((option, i) => (
             <div

@@ -36,17 +36,20 @@ export function Countdown({ leftMs, totalSeconds, big = false }: { leftMs: numbe
   );
 }
 
-/** Reveal-phase bars: one per option, correct one highlighted, names underneath. */
+/** "A, C" style list of option letters. */
+export const letters = (indexes: number[]) => indexes.map(letter).join(', ');
+
+/** Reveal-phase bars: one per option, correct ones highlighted, names underneath. */
 export function RevealBars({
   options,
   reveal,
-  myChoice,
+  myChoices,
   showNames,
   big = false,
 }: {
   options: string[];
   reveal: RevealInfo;
-  myChoice?: number | null;
+  myChoices?: number[] | null;
   showNames: boolean;
   big?: boolean;
 }) {
@@ -54,8 +57,8 @@ export function RevealBars({
   return (
     <div className="space-y-3">
       {options.map((option, i) => {
-        const isCorrect = i === reveal.correctIndex;
-        const isMine = myChoice === i;
+        const isCorrect = reveal.correctIndexes.includes(i);
+        const isMine = myChoices?.includes(i) ?? false;
         return (
           <div
             key={i}

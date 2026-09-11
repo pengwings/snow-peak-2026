@@ -1,7 +1,7 @@
 import { db, TriviaAnswer, TriviaGameState, TriviaQuestion } from './db';
-import { QUESTION_SECONDS } from './triviaConfig';
+import { QUESTION_SECONDS, isCorrectAnswer } from './triviaConfig';
 
-export { QUESTION_SECONDS };
+export { QUESTION_SECONDS, isCorrectAnswer };
 /** Answers arriving this long after the clock hits zero are still accepted (network slack). */
 const GRACE_MS = 1500;
 
@@ -14,7 +14,7 @@ export type LeaderboardRow = {
 };
 
 export type RevealInfo = {
-  correctIndex: number;
+  correctIndexes: number[];
   about: string | null;
   /** Answer count per option index. */
   counts: number[];
@@ -27,13 +27,13 @@ export type TriviaClientState = {
   factsOpen: boolean;
   questionNumber: number;
   questionCount: number;
-  question: { id: string; text: string; options: string[] } | null;
+  question: { id: string; text: string; options: string[]; multi: boolean } | null;
   questionSeconds: number;
   /** Milliseconds left on the clock; 0 once time is up. */
   timeLeftMs: number;
   answeredCount: number;
   players: string[];
-  myAnswer: { choice: number; elapsedMs: number } | null;
+  myAnswer: { choices: number[]; elapsedMs: number } | null;
   reveal: RevealInfo | null;
   leaderboard: LeaderboardRow[] | null;
 };
@@ -68,7 +68,7 @@ export function computeLeaderboard(
   questions: TriviaQuestion[],
   answers: TriviaAnswer[]
 ): LeaderboardRow[] {
-  const correctByQuestion = new Map(questions.map((q) => [q.id, q.correctIndex]));
+  const correctByQuestion = new Map(questions.map((q) => [q.id, q.correctIndexes]));
   const totals = new Map<string, { score: number; totalMs: number }>();
   for (const name of players) totals.set(name, { score: 0, totalMs: 0 });
 
@@ -76,7 +76,7 @@ export function computeLeaderboard(
     const correct = correctByQuestion.get(a.questionId);
     if (correct === undefined) continue; // question was deleted
     const row = totals.get(a.username) ?? { score: 0, totalMs: 0 };
-    if (a.choice === correct) {
+    if (isCorrectAnswer(correct, a.choices)) {
       row.score += 1;
       row.totalMs += a.elapsedMs;
     }
@@ -100,11 +100,13 @@ function buildReveal(question: TriviaQuestion, answers: TriviaAnswer[]): RevealI
   const names: string[][] = question.options.map(() => []);
   for (const a of answers) {
     if (a.questionId !== question.id) continue;
-    if (a.choice < 0 || a.choice >= question.options.length) continue;
-    counts[a.choice] += 1;
-    names[a.choice].push(a.username);
+    for (const choice of a.choices) {
+      if (choice < 0 || choice >= question.options.length) continue;
+      counts[choice] += 1;
+      names[choice].push(a.username);
+    }
   }
-  return { correctIndex: question.correctIndex, about: question.about, counts, names };
+  return { correctIndexes: question.correctIndexes, about: question.about, counts, names };
 }
 
 /**
@@ -137,12 +139,12 @@ export async function buildClientState(viewer: string | null, join = true): Prom
     factsOpen,
     questionNumber: index + 1,
     questionCount: questions.length,
-    question: question ? { id: question.id, text: question.text, options: question.options } : null,
+    question: question ? { id: question.id, text: question.text, options: question.options, multi: question.multi } : null,
     questionSeconds: QUESTION_SECONDS,
     timeLeftMs: timeLeftMs(state),
     answeredCount: question ? answers.filter((a) => a.questionId === question.id).length : 0,
     players,
-    myAnswer: mine ? { choice: mine.choice, elapsedMs: mine.elapsedMs } : null,
+    myAnswer: mine ? { choices: mine.choices, elapsedMs: mine.elapsedMs } : null,
     reveal: question && showAnswers ? buildReveal(question, answers) : null,
     leaderboard: showAnswers ? computeLeaderboard(players, questions, answers) : null,
   };
@@ -200,8 +202,12 @@ export async function applyHostAction(action: HostAction): Promise<string | null
   }
 }
 
-/** Records a player's answer, replacing any earlier pick; returns an error message if it can't be accepted. */
-export async function submitAnswer(username: string, questionId: string, choice: number): Promise<string | null> {
+/**
+ * Records a player's answer, replacing any earlier pick; returns an error message if it can't be accepted.
+ * `choices` is the player's whole current selection: one index for a normal question, any number
+ * (including none, which withdraws the answer) for a multi-select one.
+ */
+export async function submitAnswer(username: string, questionId: string, choices: number[]): Promise<string | null> {
   const state = await getLiveGameState();
   if (state.phase !== 'question' || state.questionId !== questionId) return 'That question is no longer open.';
 
@@ -211,9 +217,15 @@ export async function submitAnswer(username: string, questionId: string, choice:
   const questions = await db.getTriviaQuestions();
   const question = questions.find((q) => q.id === questionId);
   if (!question) return 'Question not found.';
-  if (!Number.isInteger(choice) || choice < 0 || choice >= question.options.length) return 'Invalid choice.';
+  const unique = [...new Set(choices)].sort((a, b) => a - b);
+  if (unique.some((c) => !Number.isInteger(c) || c < 0 || c >= question.options.length)) return 'Invalid choice.';
+  if (!question.multi && unique.length !== 1) return 'Pick exactly one option.';
 
   await db.addTriviaPlayer(username);
-  await db.addTriviaAnswer({ questionId, username, choice, elapsedMs: Math.min(elapsed, QUESTION_SECONDS * 1000) });
+  if (unique.length === 0) {
+    await db.removeTriviaAnswer(questionId, username);
+    return null;
+  }
+  await db.addTriviaAnswer({ questionId, username, choices: unique, elapsedMs: Math.min(elapsed, QUESTION_SECONDS * 1000) });
   return null;
 }

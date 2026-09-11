@@ -162,19 +162,26 @@ async function init() {
       text TEXT NOT NULL,
       options JSONB DEFAULT '[]',
       correct_index INTEGER NOT NULL DEFAULT 0,
+      correct_indexes JSONB,
+      multi BOOLEAN DEFAULT false,
       about TEXT
     );
   `;
+  // Multi-select questions: a set of correct options (correct_index keeps the first one).
+  await sql`ALTER TABLE trivia_questions ADD COLUMN IF NOT EXISTS correct_indexes JSONB;`;
+  await sql`ALTER TABLE trivia_questions ADD COLUMN IF NOT EXISTS multi BOOLEAN DEFAULT false;`;
   await sql`
     CREATE TABLE IF NOT EXISTS trivia_answers (
       question_id TEXT NOT NULL,
       username TEXT NOT NULL,
       choice INTEGER NOT NULL,
+      choices JSONB,
       elapsed_ms INTEGER NOT NULL DEFAULT 0,
       answered_at TIMESTAMPTZ DEFAULT now(),
       PRIMARY KEY (question_id, username)
     );
   `;
+  await sql`ALTER TABLE trivia_answers ADD COLUMN IF NOT EXISTS choices JSONB;`;
   await sql`
     CREATE TABLE IF NOT EXISTS trivia_players (
       username TEXT PRIMARY KEY,

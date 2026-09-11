@@ -100,7 +100,10 @@ export type TriviaQuestion = {
   position: number;
   text: string;
   options: string[];
-  correctIndex: number;
+  /** Indexes into `options` that count as correct; exactly one unless `multi`. */
+  correctIndexes: number[];
+  /** True for "select all that apply" questions: players pick a set and must match it exactly. */
+  multi: boolean;
   /** Optional: the person this question is about (shown on the reveal). */
   about: string | null;
 };
@@ -108,7 +111,8 @@ export type TriviaQuestion = {
 export type TriviaAnswer = {
   questionId: string;
   username: string;
-  choice: number;
+  /** Selected option indexes; a single element unless the question is `multi`. */
+  choices: number[];
   elapsedMs: number;
 };
 
@@ -161,8 +165,11 @@ type FoodIngredientRow = { id: string; food_id: string; name: string; purchased:
 type TodoRow = { id: string; text: string; completed: boolean; username: string; assignee: string | null };
 type PackingItemRow = { id: string; name: string; provided: boolean; personal: boolean | null; packed: boolean; username: string | null; assignee: string | null };
 type TriviaFactsRow = { username: string; hobby: string | null; self_facts: unknown; hobby_facts: unknown; updated_at: Date | string | null };
-type TriviaQuestionRow = { id: string; position: number | null; text: string; options: unknown; correct_index: number | null; about: string | null };
-type TriviaAnswerRow = { question_id: string; username: string; choice: number; elapsed_ms: number };
+type TriviaQuestionRow = {
+  id: string; position: number | null; text: string; options: unknown;
+  correct_index: number | null; correct_indexes: unknown; multi: boolean | null; about: string | null;
+};
+type TriviaAnswerRow = { question_id: string; username: string; choice: number; choices: unknown; elapsed_ms: number };
 type TriviaPlayerRow = { username: string };
 type GameRow = { id: string; name: string; source: string | null; played_at: Date | string | null };
 type GameResultRow = { game_id: string; username: string; place: number };
@@ -462,13 +469,16 @@ export const db = {
     return rows.map(mapTriviaQuestion);
   },
   async addTriviaQuestion(q: TriviaQuestion) {
-    await sql`INSERT INTO trivia_questions (id, position, text, options, correct_index, about)
-              VALUES (${q.id}, ${q.position}, ${q.text}, ${JSON.stringify(q.options)}::jsonb, ${q.correctIndex}, ${q.about})`;
+    // correct_index mirrors the first correct option so older readers keep working.
+    await sql`INSERT INTO trivia_questions (id, position, text, options, correct_index, correct_indexes, multi, about)
+              VALUES (${q.id}, ${q.position}, ${q.text}, ${JSON.stringify(q.options)}::jsonb,
+                      ${q.correctIndexes[0] ?? 0}, ${JSON.stringify(q.correctIndexes)}::jsonb, ${q.multi}, ${q.about})`;
   },
   async updateTriviaQuestion(q: TriviaQuestion) {
     await sql`UPDATE trivia_questions
               SET position = ${q.position}, text = ${q.text}, options = ${JSON.stringify(q.options)}::jsonb,
-                  correct_index = ${q.correctIndex}, about = ${q.about}
+                  correct_index = ${q.correctIndexes[0] ?? 0}, correct_indexes = ${JSON.stringify(q.correctIndexes)}::jsonb,
+                  multi = ${q.multi}, about = ${q.about}
               WHERE id = ${q.id}`;
   },
   async removeAllTriviaQuestions() {
@@ -497,15 +507,21 @@ export const db = {
     return rows.map((r: TriviaAnswerRow) => ({
       questionId: r.question_id,
       username: r.username,
-      choice: r.choice,
+      // Rows written before multi-select only have the single `choice` column.
+      choices: parseJson<number[] | null>(r.choices, null) ?? [r.choice],
       elapsedMs: r.elapsed_ms,
     }));
   },
   /** Latest answer wins: players can change their pick until time runs out, and the tiebreak clock follows the final pick. */
   async addTriviaAnswer(answer: TriviaAnswer) {
-    await sql`INSERT INTO trivia_answers (question_id, username, choice, elapsed_ms)
-              VALUES (${answer.questionId}, ${answer.username}, ${answer.choice}, ${answer.elapsedMs})
-              ON CONFLICT (question_id, username) DO UPDATE SET choice = EXCLUDED.choice, elapsed_ms = EXCLUDED.elapsed_ms, answered_at = now()`;
+    await sql`INSERT INTO trivia_answers (question_id, username, choice, choices, elapsed_ms)
+              VALUES (${answer.questionId}, ${answer.username}, ${answer.choices[0] ?? 0}, ${JSON.stringify(answer.choices)}::jsonb, ${answer.elapsedMs})
+              ON CONFLICT (question_id, username) DO UPDATE
+              SET choice = EXCLUDED.choice, choices = EXCLUDED.choices, elapsed_ms = EXCLUDED.elapsed_ms, answered_at = now()`;
+  },
+  /** Withdraws a player's answer (a multi-select player deselected every option). */
+  async removeTriviaAnswer(questionId: string, username: string) {
+    await sql`DELETE FROM trivia_answers WHERE question_id = ${questionId} AND username = ${username}`;
   },
   async clearTriviaAnswers() {
     await sql`DELETE FROM trivia_answers`;
@@ -611,7 +627,9 @@ function mapTriviaQuestion(r: TriviaQuestionRow): TriviaQuestion {
     position: r.position ?? 0,
     text: r.text,
     options: parseJson<string[]>(r.options, []),
-    correctIndex: r.correct_index ?? 0,
+    // Questions written before multi-select only have the single `correct_index` column.
+    correctIndexes: parseJson<number[] | null>(r.correct_indexes, null) ?? [r.correct_index ?? 0],
+    multi: r.multi ?? false,
     about: r.about ?? null,
   };
 }

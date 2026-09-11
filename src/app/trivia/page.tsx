@@ -9,8 +9,9 @@ import TabVisibilityToggle from '@/components/TabVisibilityToggle';
 import SignInHint from '@/components/SignInHint';
 import FactsForm from '@/components/trivia/FactsForm';
 import { useTriviaState } from '@/lib/useTriviaState';
+import { isCorrectAnswer } from '@/lib/triviaConfig';
 import {
-  Countdown, Leaderboard, Panel, RevealBars, SectionTitle, letter, CORRECT, WRONG,
+  Countdown, Leaderboard, Panel, RevealBars, SectionTitle, letter, letters, CORRECT, WRONG,
 } from '@/components/trivia/TriviaShared';
 
 /** How long to wait for an answer to be accepted before giving the buttons back. */
@@ -28,16 +29,24 @@ export default function TriviaPage() {
     if (error === 'unauthorized') router.push('/login');
   }, [error, router]);
 
+  /** Single-answer: pick this option. Multi-select: toggle it in the current selection. */
   const answer = async (choice: number) => {
     if (!user || !state?.question || submitting !== null) return;
-    if (state.myAnswer?.choice === choice) return; // already on this option
+    const current = state.myAnswer?.choices ?? [];
+    let choices: number[];
+    if (state.question.multi) {
+      choices = current.includes(choice) ? current.filter((c) => c !== choice) : [...current, choice].sort((a, b) => a - b);
+    } else {
+      if (current.length === 1 && current[0] === choice) return; // already on this option
+      choices = [choice];
+    }
     setSubmitting(choice);
     setAnswerError(null);
     try {
       const res = await fetch('/api/trivia/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionId: state.question.id, choice }),
+        body: JSON.stringify({ questionId: state.question.id, choices }),
         // Bail out on a hung request so the buttons don't stay disabled forever on bad wifi.
         signal: AbortSignal.timeout(ANSWER_TIMEOUT_MS),
       });
@@ -127,14 +136,23 @@ export default function TriviaPage() {
     const timeUp = timeLeftMs <= 0;
     // Picks can be changed until the clock runs out; only then do the options lock.
     const locked = !user || timeUp;
+    const multi = state.question.multi;
+    const picked = state.myAnswer?.choices ?? [];
+    const pickedText = letters(picked);
+    const tally = `${state.answeredCount} of ${state.players.length} answered`;
     body = (
       <Panel>
         {progress}
         <div className="mb-5"><Countdown leftMs={timeLeftMs} totalSeconds={state.questionSeconds} /></div>
-        <h2 className="text-2xl font-normal mb-6" style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>{state.question.text}</h2>
+        <h2 className={`text-2xl font-normal ${multi ? 'mb-2' : 'mb-6'}`} style={{ fontFamily: 'EB Garamond, Georgia, serif' }}>{state.question.text}</h2>
+        {multi && (
+          <p className="text-xs tracking-widest uppercase mb-6" style={{ color: 'var(--accent)' }}>Select all that apply</p>
+        )}
         <div className="space-y-2">
           {state.question.options.map((option, i) => {
-            const chosen = state.myAnswer?.choice === i || submitting === i;
+            // While a tap is in flight, show the option in its new state.
+            const inFlight = submitting === i;
+            const chosen = multi ? (inFlight ? !picked.includes(i) : picked.includes(i)) : picked.includes(i) || inFlight;
             return (
               <button
                 key={i}
@@ -167,18 +185,23 @@ export default function TriviaPage() {
               ? <span style={{ color: WRONG }}>{answerError}</span>
               : state.myAnswer
                 ? timeUp
-                  ? `Final answer: ${letter(state.myAnswer.choice)} · ${state.answeredCount} of ${state.players.length} answered`
-                  : `Answered ${letter(state.myAnswer.choice)} ✓ · tap another option to change · ${state.answeredCount} of ${state.players.length} answered`
+                  ? `Final answer: ${pickedText} · ${tally}`
+                  : multi
+                    ? `Selected ${pickedText} ✓ · tap to add or remove · ${tally}`
+                    : `Answered ${pickedText} ✓ · tap another option to change · ${tally}`
                 : timeUp
                   ? "Time's up!"
-                  : 'Tap an answer. You can change it until time runs out.'}
+                  : multi
+                    ? 'Tap every answer that applies. You can change them until time runs out.'
+                    : 'Tap an answer. You can change it until time runs out.'}
           </p>
         )}
       </Panel>
     );
   } else if (state.phase === 'reveal' && state.question && state.reveal) {
     const mine = state.myAnswer;
-    const correct = mine?.choice === state.reveal.correctIndex;
+    const correct = !!mine && isCorrectAnswer(state.reveal.correctIndexes, mine.choices);
+    const missed = mine && !correct && state.question.multi && mine.choices.some((c) => state.reveal!.correctIndexes.includes(c));
     body = (
       <Panel>
         {progress}
@@ -188,10 +211,16 @@ export default function TriviaPage() {
         )}
         {user && (
           <p className="text-lg font-medium mb-5" style={{ color: correct ? CORRECT : WRONG }}>
-            {mine ? (correct ? `Correct! +1 (${(mine.elapsedMs / 1000).toFixed(1)}s)` : 'Not this time.') : 'You didn’t answer.'}
+            {mine
+              ? correct
+                ? `Correct! +1 (${(mine.elapsedMs / 1000).toFixed(1)}s)`
+                : missed
+                  ? 'Close, but the whole set has to match.'
+                  : 'Not this time.'
+              : 'You didn’t answer.'}
           </p>
         )}
-        <RevealBars options={state.question.options} reveal={state.reveal} myChoice={mine?.choice ?? null} showNames={false} />
+        <RevealBars options={state.question.options} reveal={state.reveal} myChoices={mine?.choices ?? null} showNames={false} />
       </Panel>
     );
   } else if ((state.phase === 'leaderboard' || state.phase === 'finished') && state.leaderboard) {

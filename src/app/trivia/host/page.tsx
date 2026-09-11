@@ -198,14 +198,15 @@ export default function TriviaHostPage() {
         <Panel className="mb-6">
           <p className="text-xs tracking-widest uppercase mb-2" style={{ color: 'var(--muted)' }}>Current question</p>
           <p className="text-lg mb-1">{current.text}</p>
+          {current.multi && <p className="text-xs tracking-widest uppercase mb-1" style={{ color: 'var(--accent)' }}>Select all that apply</p>}
           {current.about && <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>About {displayName(current.about)}</p>}
           <ul className="space-y-1 text-sm">
             {current.options.map((o, i) => (
-              <li key={i} className="flex gap-2" style={{ color: i === current.correctIndex ? CORRECT : 'var(--foreground)' }}>
+              <li key={i} className="flex gap-2" style={{ color: current.correctIndexes.includes(i) ? CORRECT : 'var(--foreground)' }}>
                 <span className="font-semibold w-5">{letter(i)}</span>
                 <span className="flex-1">{o}</span>
                 {state.reveal && <span className="tabular-nums" style={{ color: 'var(--muted)' }}>{state.reveal.counts[i]}</span>}
-                {i === current.correctIndex && <span>✓</span>}
+                {current.correctIndexes.includes(i) && <span>✓</span>}
               </li>
             ))}
           </ul>

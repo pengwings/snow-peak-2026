@@ -27,6 +27,12 @@ Write multiple-choice questions and output them ONLY as JSON in exactly this sha
       "options": ["<choice>", "<choice>", "<choice>", "<choice>"],
       "answer": "<the correct choice, copied exactly from options>",
       "about": "<guest name>"
+    },
+    {
+      "text": "<question text>",
+      "options": ["<choice>", "<choice>", "<choice>", "<choice>"],
+      "answer": ["<correct choice>", "<correct choice>"],
+      "about": "<guest name>"
     }
   ]
 }
@@ -34,6 +40,7 @@ Write multiple-choice questions and output them ONLY as JSON in exactly this sha
 Rules:
 - For each guest, turn 2 of their personal facts into questions of the form "Who said: '<fact>'?" using "options": "players". Quote the fact verbatim in the question text. The guest who submitted it goes in "about".
 - For each guest, turn 2 of their hobby facts into four-option questions. Make the three wrong choices plausible and the same length and style as the right one. Never reuse a wrong choice from another question. The guest whose hobby it is goes in "about".
+- When a hobby fact naturally has several right answers, you may give "answer" as a list of two or more options. That makes a "select all that apply" question, scored only when the player picks exactly that set. Use this sparingly (at most a few per game) and keep four options.
 - "about" and "answer" must match a guest name or option exactly as written.
 - Shuffle the order so consecutive questions are about different guests.
 - Use everyday language; each question text should fit on one projector line (under 100 characters).
