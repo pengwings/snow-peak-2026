@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import {
   HomeIcon as Cabin, Plane, ShoppingCart, Activity, MapPin, ChefHat, CheckSquare, Luggage, CircleHelp, Medal, Eye,
-  Tent, ClipboardList, Gamepad2, ChevronDown,
+  Tent, ClipboardList, Gamepad2, ChevronDown, Slice,
 } from 'lucide-react';
 
 type NavLink = { href: string; label: string; icon: typeof Plane };
@@ -41,6 +41,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: Gamepad2,
     links: [
       { href: '/trivia', label: 'Trivia', icon: CircleHelp },
+      { href: '/onion', label: 'Onion Dice', icon: Slice },
       { href: '/rankings', label: 'Rankings', icon: Medal },
     ],
   },

@@ -219,6 +219,21 @@ async function init() {
     );
   `;
 
+  // Onion dice: each analysed photo an admin chose to save, one row per
+  // attempt. A player's best attempt is what ranks (see onion.ts).
+  await sql`
+    CREATE TABLE IF NOT EXISTS onion_attempts (
+      id TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      score INTEGER NOT NULL,
+      pieces INTEGER NOT NULL,
+      cv REAL NOT NULL,
+      in_spec REAL NOT NULL,
+      scored_by TEXT,
+      scored_at TIMESTAMPTZ DEFAULT now()
+    );
+  `;
+
   // Seed the campground-provided items if none exist yet
   const providedCount = await sql<{ count: string }>`SELECT count(*) FROM packing_items WHERE provided = true`;
   if (parseInt(providedCount[0].count) === 0) {

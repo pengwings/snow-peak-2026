@@ -336,6 +336,7 @@ export default function RankingsPage() {
                     <p className="text-xs tracking-widest uppercase" style={{ color: 'var(--muted)' }}>
                       Game {games.length - i} · {formatDate(game.playedAt)}
                       {game.source === 'trivia' && <> · <Link href="/trivia" className="underline">Trivia</Link></>}
+                      {game.source === 'onion' && <> · <Link href="/onion" className="underline">Onion Dice</Link></>}
                     </p>
                     <h3 className="text-xl font-normal" style={SERIF}>{game.name}</h3>
                   </div>

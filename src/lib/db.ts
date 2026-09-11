@@ -125,8 +125,8 @@ export type GameResult = {
 export type Game = {
   id: string;
   name: string;
-  /** 'trivia' when imported from the live trivia game, otherwise 'manual'. */
-  source: 'manual' | 'trivia';
+  /** 'trivia' when imported from the live trivia game, 'onion' when recorded from the onion dice round, otherwise 'manual'. */
+  source: 'manual' | 'trivia' | 'onion';
   playedAt: string;
   results: GameResult[];
 };
@@ -138,6 +138,22 @@ export type BonusAward = {
   points: number;
   reason: string;
   awardedAt: string;
+};
+
+export type OnionAttempt = {
+  id: string;
+  username: string;
+  /** 0–100 evenness score from the photo analyser. */
+  score: number;
+  /** Pieces detected in the photo. */
+  pieces: number;
+  /** Coefficient of variation of piece size (lower is more even). */
+  cv: number;
+  /** Share of pieces within tolerance of the median size, 0–1. */
+  inSpec: number;
+  /** Admin who saved the attempt. */
+  scoredBy: string | null;
+  scoredAt: string;
 };
 
 export type TriviaPhase = 'idle' | 'lobby' | 'question' | 'reveal' | 'leaderboard' | 'finished';
@@ -174,6 +190,10 @@ type TriviaPlayerRow = { username: string };
 type GameRow = { id: string; name: string; source: string | null; played_at: Date | string | null };
 type GameResultRow = { game_id: string; username: string; place: number };
 type BonusAwardRow = { id: string; username: string; points: number; reason: string | null; awarded_at: Date | string | null };
+type OnionAttemptRow = {
+  id: string; username: string; score: number; pieces: number; cv: number; in_spec: number;
+  scored_by: string | null; scored_at: Date | string | null;
+};
 
 const TRIVIA_GAME_KEY = 'trivia_game';
 const TRIVIA_FACTS_OPEN_KEY = 'trivia_facts_open';
@@ -552,7 +572,7 @@ export const db = {
     return gameRows.map((r: GameRow) => ({
       id: r.id,
       name: r.name,
-      source: r.source === 'trivia' ? 'trivia' : 'manual',
+      source: r.source === 'trivia' || r.source === 'onion' ? r.source : 'manual',
       playedAt: r.played_at instanceof Date ? r.played_at.toISOString() : (r.played_at ?? new Date().toISOString()),
       results: byGame.get(r.id) ?? [],
     }));
@@ -597,6 +617,31 @@ export const db = {
   },
   async removeBonusAward(id: string) {
     await sql`DELETE FROM bonus_points WHERE id = ${id}`;
+  },
+
+  // ---- Onion dice: scored attempts from the photo analyser ----
+  async getOnionAttempts(): Promise<OnionAttempt[]> {
+    const rows = await sql<OnionAttemptRow>`SELECT * FROM onion_attempts ORDER BY scored_at, id`;
+    return rows.map((r: OnionAttemptRow) => ({
+      id: r.id,
+      username: r.username,
+      score: r.score,
+      pieces: r.pieces,
+      cv: Number(r.cv),
+      inSpec: Number(r.in_spec),
+      scoredBy: r.scored_by ?? null,
+      scoredAt: r.scored_at instanceof Date ? r.scored_at.toISOString() : (r.scored_at ?? new Date().toISOString()),
+    }));
+  },
+  async addOnionAttempt(a: Omit<OnionAttempt, 'scoredAt'>) {
+    await sql`INSERT INTO onion_attempts (id, username, score, pieces, cv, in_spec, scored_by)
+              VALUES (${a.id}, ${a.username}, ${a.score}, ${a.pieces}, ${a.cv}, ${a.inSpec}, ${a.scoredBy})`;
+  },
+  async removeOnionAttempt(id: string) {
+    await sql`DELETE FROM onion_attempts WHERE id = ${id}`;
+  },
+  async clearOnionAttempts() {
+    await sql`DELETE FROM onion_attempts`;
   },
 };
 
