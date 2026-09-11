@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Pencil, Trash2 } from 'lucide-react';
 import { displayName } from '@/lib/displayName';
 import { useSession } from '@/lib/useSession';
-import { GRAND_PRIX_POINTS, PARTICIPATION_POINTS, ordinal } from '@/lib/rankingsConfig';
+import { OLYMPICS_POINTS, PARTICIPATION_POINTS, ordinal } from '@/lib/rankingsConfig';
 import type { GameWithPoints, RankingsData } from '@/lib/rankings';
 import type { BonusAward } from '@/lib/db';
 import TabVisibilityToggle from '@/components/TabVisibilityToggle';
@@ -142,13 +142,13 @@ export default function RankingsPage() {
   return (
     <div className="max-w-5xl mx-auto px-6 py-12">
       <div className="flex items-center gap-3 mb-2">
-        <h1 className="text-4xl font-normal" style={SERIF}>Grand Prix Standings</h1>
+        <h1 className="text-4xl font-normal" style={SERIF}>Snow Peak Olympics Standings</h1>
         <TabVisibilityToggle />
       </div>
       <div className="w-8 h-px mb-4" style={{ background: 'var(--border)' }} />
       <p className="text-sm mb-8 max-w-2xl" style={{ color: 'var(--muted)' }}>
-        Every game we play on the trip counts. Finish 1st for {GRAND_PRIX_POINTS[0]} points, 2nd for {GRAND_PRIX_POINTS[1]},
-        3rd for {GRAND_PRIX_POINTS[2]}, then one fewer for each place down to {ordinal(GRAND_PRIX_POINTS.length)} ({GRAND_PRIX_POINTS[GRAND_PRIX_POINTS.length - 1]}).
+        Every game we play on the trip counts. Finish 1st for {OLYMPICS_POINTS[0]} points, 2nd for {OLYMPICS_POINTS[1]},
+        3rd for {OLYMPICS_POINTS[2]}, then one fewer for each place down to {ordinal(OLYMPICS_POINTS.length)} ({OLYMPICS_POINTS[OLYMPICS_POINTS.length - 1]}).
         Anyone further back still picks up {PARTICIPATION_POINTS} for playing. Bonus points may be handed out at the
         organisers&apos; whim. Most points at the end of the trip wins.
       </p>
@@ -161,7 +161,7 @@ export default function RankingsPage() {
           <span className="text-4xl">🏆</span>
           <div>
             <p className="text-xs tracking-widest uppercase" style={{ color: 'var(--muted)' }}>
-              {standings.filter((s) => s.position === 1).length > 1 ? 'Tied for the lead' : 'Leading the Grand Prix'}
+              {standings.filter((s) => s.position === 1).length > 1 ? 'Tied for the lead' : 'Leading the Snow Peak Olympics'}
             </p>
             <p className="text-2xl font-normal" style={SERIF}>
               {standings.filter((s) => s.position === 1).map((s) => displayName(s.name)).join(' & ')}

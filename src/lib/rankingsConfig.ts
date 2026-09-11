@@ -1,17 +1,17 @@
 /** Shared rankings settings (safe to import from client components). */
 
 /**
- * Points awarded for each finishing place, Mario Kart 8 Grand Prix style:
+ * Points awarded for each finishing place in the Snow Peak Olympics, scored Mario Kart 8 style:
  * 1st gets 15, 2nd 12, 3rd 10, then one fewer per place down to 12th (1).
  * Anyone who finishes below 12th still earns a point for playing.
  */
-export const GRAND_PRIX_POINTS = [15, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
+export const OLYMPICS_POINTS = [15, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
 export const PARTICIPATION_POINTS = 1;
 
 /** Points for a 1-based finishing place; ties all receive the shared place's points. */
 export function pointsForPlace(place: number): number {
   if (!Number.isInteger(place) || place < 1) return 0;
-  return GRAND_PRIX_POINTS[place - 1] ?? PARTICIPATION_POINTS;
+  return OLYMPICS_POINTS[place - 1] ?? PARTICIPATION_POINTS;
 }
 
 export function ordinal(n: number): string {

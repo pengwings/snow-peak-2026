@@ -55,7 +55,7 @@ export default function TriviaHostPage() {
 
   const act = (action: Action) => send({ action });
 
-  /** Copies the final standings into the Grand Prix rankings as a game. */
+  /** Copies the final standings into the Snow Peak Olympics rankings as a game. */
   const recordToRankings = async () => {
     setBusy(true);
     setMessage(null);
