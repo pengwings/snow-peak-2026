@@ -233,6 +233,8 @@ async function init() {
       scored_at TIMESTAMPTZ DEFAULT now()
     );
   `;
+  // Time to dice was added later; attempts saved before it stay valid with no time.
+  await sql`ALTER TABLE onion_attempts ADD COLUMN IF NOT EXISTS time_seconds REAL;`;
 
   // Seed the campground-provided items if none exist yet
   const providedCount = await sql<{ count: string }>`SELECT count(*) FROM packing_items WHERE provided = true`;

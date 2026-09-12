@@ -14,7 +14,7 @@ A full-stack, nature-inspired web application built with [Next.js](https://nextj
 - **Trip Schedule**: Day-by-day itinerary visible to everyone, editable only by trip admins.
 - **Expense Tracking**: Shared and individual expense tracking across the group.
 - **Todo Lists**: Shared actionable todo lists for pre-trip and trip responsibilities.
-- **Onion Dice Scorer**: Snap a photo of a contestant's diced onion and the browser finds every piece and scores how even the cut is; admins save attempts, and the best per player can be recorded as an Olympics game.
+- **Onion Dice Scorer**: Snap a photo of a contestant's diced onion and the browser finds every piece and scores how even the cut is; admins time the cut with a built-in stopwatch and save attempts, players rank on a blend of evenness and speed, and the best per player can be recorded as an Olympics game.
 - **Snow Peak Olympics Rankings**: Every game played on the trip earns Mario Kart style points by finishing place; a standings tab tracks the season, and a finished trivia game can be recorded with one tap.
 - **Nature-Inspired Aesthetic**: Minimal, clean UI styled with Tailwind CSS.
 

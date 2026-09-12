@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
-import { buildOnionData, recordOnionGame, validateAttempt } from '@/lib/onion';
+import { buildOnionData, recordOnionGame, validateAttempt, validateTime } from '@/lib/onion';
 
 export const dynamic = 'force-dynamic';
 
-/** Every scored attempt plus the best-per-player standings; readable by everyone. */
+/** Every scored attempt, the fastest time, and the best-per-player standings; readable by everyone. */
 export async function GET() {
   return NextResponse.json(await buildOnionData(), { headers: { 'Cache-Control': 'no-store' } });
 }
 
-/** Admin only: save an analysed attempt for a player, delete one, wipe the round, or record it as an Olympics game. */
+/** Admin only: save an analysed attempt for a player, set or clear its time, delete one, wipe the round, or record it as an Olympics game. */
 export async function POST(request: Request) {
   const user = await getSessionUser();
   if (!user?.isAdmin) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -23,6 +23,14 @@ export async function POST(request: Request) {
     const validated = validateAttempt(body, knownUsers);
     if ('error' in validated) return NextResponse.json({ error: validated.error }, { status: 400 });
     await db.addOnionAttempt({ id: Math.random().toString(36).substring(7), scoredBy: user.name, ...validated });
+    return NextResponse.json({ success: true, ...(await buildOnionData()) });
+  }
+
+  if (action === 'setTime') {
+    if (typeof body.id !== 'string') return NextResponse.json({ error: 'id required' }, { status: 400 });
+    const time = validateTime(body.timeSeconds);
+    if (typeof time === 'object' && time !== null) return NextResponse.json({ error: time.error }, { status: 400 });
+    if (!(await db.setOnionAttemptTime(body.id, time))) return NextResponse.json({ error: 'That attempt no longer exists' }, { status: 404 });
     return NextResponse.json({ success: true, ...(await buildOnionData()) });
   }
 

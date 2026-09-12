@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Camera, RotateCcw, Trash2 } from 'lucide-react';
+import { Camera, Check, Pause, Play, RotateCcw, Timer, Trash2, X } from 'lucide-react';
 import { displayName } from '@/lib/displayName';
 import { useSession } from '@/lib/useSession';
 import type { OnionData } from '@/lib/onion';
+import { SPEED_WEIGHT, formatTime, parseTimeInput } from '@/lib/onionTime';
 import type { OnionAttempt } from '@/lib/db';
 import {
   Analysis, AnalysisOptions, DEFAULT_OPTIONS, IN_SPEC_TOLERANCE, MIN_PIECES, analyzeImage, drawOverlay, scoreLabel,
@@ -66,8 +67,9 @@ export default function OnionPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Admin: saving the result for a player
+  // Admin: saving the result for a player, with how long they took to dice
   const [player, setPlayer] = useState('');
+  const [timeText, setTimeText] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -159,6 +161,8 @@ export default function OnionPage() {
   const saveAttempt = async () => {
     if (!analysis || analysis.score === null) return;
     if (!player) { setSaveError('Pick whose onion this is.'); return; }
+    const timeSeconds = parseTimeInput(timeText);
+    if (timeSeconds === undefined) { setSaveError('Enter the time as seconds (e.g. 95) or minutes:seconds (e.g. 1:35), or leave it blank.'); return; }
     const ok = await post({
       action: 'save',
       username: player,
@@ -166,8 +170,21 @@ export default function OnionPage() {
       pieces: analysis.pieces.length,
       cv: Number(analysis.cv.toFixed(4)),
       inSpec: Number(analysis.inSpec.toFixed(4)),
+      timeSeconds,
     });
-    if (ok) setNotice(`Saved ${analysis.score} for ${displayName(player)}.`);
+    if (ok) {
+      setNotice(`Saved ${analysis.score}${timeSeconds ? ` in ${formatTime(timeSeconds)}` : ' (no time)'} for ${displayName(player)}.`);
+      setTimeText('');
+    }
+  };
+
+  /** Adds, changes, or clears the time on an attempt that has already been saved. */
+  const setAttemptTime = async (a: OnionAttempt, raw: string) => {
+    const timeSeconds = parseTimeInput(raw);
+    if (timeSeconds === undefined) { setSaveError('Enter the time as seconds (e.g. 95) or minutes:seconds (e.g. 1:35).'); return false; }
+    const ok = await post({ action: 'setTime', id: a.id, timeSeconds });
+    if (ok) setNotice(timeSeconds ? `${displayName(a.username)}’s ${a.score}: ${formatTime(timeSeconds)}.` : `Cleared the time on ${displayName(a.username)}’s ${a.score}.`);
+    return ok;
   };
 
   const deleteAttempt = async (a: OnionAttempt) => {
@@ -196,6 +213,8 @@ export default function OnionPage() {
 
   const attempts = data?.attempts ?? [];
   const standings = data?.standings ?? [];
+  const fastest = data?.fastestSeconds ?? null;
+  const anyTimed = fastest !== null;
   const score = analysis?.score ?? null;
   const scoreColor = score === null ? 'var(--muted)' : score >= 75 ? CORRECT : score >= 40 ? AMBER : WRONG;
 
@@ -207,13 +226,22 @@ export default function OnionPage() {
       </div>
       <div className="w-8 h-px mb-4" style={{ background: 'var(--border)' }} />
       <p className="text-sm mb-8 max-w-2xl" style={{ color: 'var(--muted)' }}>
-        Everyone dices an onion. Spread the pieces out on a plain board so none touch, snap a photo from
-        straight above, and the page finds every piece and scores how even the cut is: 100 means identical
-        pieces, and the score drops as the sizes spread out. Your best attempt counts, and the round can be
-        recorded in the <Link href="/rankings" className="underline">Olympics standings</Link>.
+        Everyone dices an onion against the clock. Spread the pieces out on a plain board so none touch, snap a
+        photo from straight above, and the page finds every piece and scores how even the cut is: 100 means
+        identical pieces, and the score drops as the sizes spread out. Speed counts too: the fastest cut of the
+        round scores 100 for speed, and taking twice as long scores 50. Your overall score is {Math.round((1 - SPEED_WEIGHT) * 100)}% evenness
+        and {Math.round(SPEED_WEIGHT * 100)}% speed, your best attempt counts, and the round can be recorded in
+        the <Link href="/rankings" className="underline">Olympics standings</Link>.
       </p>
 
       {loadError && <p className="text-sm mb-6" style={{ color: WRONG }}>{loadError}</p>}
+
+      {isAdmin && (
+        <div className="mb-10">
+          <SectionTitle>Time the cut</SectionTitle>
+          <Stopwatch onStop={(seconds) => setTimeText(formatTimeInput(seconds))} />
+        </div>
+      )}
 
       {/* Analyser */}
       <div className="mb-10">
@@ -350,17 +378,33 @@ export default function OnionPage() {
 
                 {isAdmin && score !== null && (
                   <div className="mt-5 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
-                    <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--muted)' }}>Whose onion?</label>
+                    <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-2 mb-2">
+                      <label className="block">
+                        <span className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--muted)' }}>Whose onion?</span>
+                        <select
+                          value={player}
+                          onChange={(e) => setPlayer(e.target.value)}
+                          className="w-full px-3 py-2 text-sm focus:outline-none"
+                          style={{ border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
+                        >
+                          <option value="">Choose a player…</option>
+                          {users.map((u) => <option key={u} value={u}>{displayName(u)}</option>)}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--muted)' }}>Time</span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="m:ss"
+                          value={timeText}
+                          onChange={(e) => setTimeText(e.target.value)}
+                          className="w-full px-3 py-2 text-sm tabular-nums focus:outline-none"
+                          style={{ border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
+                        />
+                      </label>
+                    </div>
                     <div className="flex gap-2">
-                      <select
-                        value={player}
-                        onChange={(e) => setPlayer(e.target.value)}
-                        className="flex-1 px-3 py-2 text-sm focus:outline-none"
-                        style={{ border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
-                      >
-                        <option value="">Choose a player…</option>
-                        {users.map((u) => <option key={u} value={u}>{displayName(u)}</option>)}
-                      </select>
                       <button
                         type="button"
                         onClick={saveAttempt}
@@ -371,6 +415,9 @@ export default function OnionPage() {
                         {saving ? 'Saving…' : 'Save score'}
                       </button>
                     </div>
+                    <p className="text-[11px] mt-1.5" style={{ color: 'var(--muted)' }}>
+                      Time from the stopwatch above, or type seconds or minutes:seconds. Leave blank to save evenness only.
+                    </p>
                     {saveError && <p className="text-sm mt-2" style={{ color: WRONG }}>{saveError}</p>}
                   </div>
                 )}
@@ -386,7 +433,7 @@ export default function OnionPage() {
         {notice && <p className="text-sm mt-3" style={{ color: CORRECT }}>{notice}</p>}
       </div>
 
-      {/* Standings: best attempt per player */}
+      {/* Standings: best attempt per player, timed players first */}
       <div className="mb-10">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <SectionTitle>Standings</SectionTitle>
@@ -423,11 +470,33 @@ export default function OnionPage() {
                 <span className="text-xs tabular-nums hidden sm:inline" style={{ color: 'var(--muted)' }}>
                   {row.best.pieces} pieces · {pct(row.best.inSpec)} in spec{row.attempts > 1 ? ` · best of ${row.attempts}` : ''}
                 </span>
-                <span className="w-12 text-right tabular-nums font-semibold text-base">{row.best.score}</span>
+                {anyTimed && (
+                  <span className="w-20 text-right tabular-nums text-xs" style={{ color: 'var(--muted)' }} title="Evenness">
+                    {row.best.score} even
+                  </span>
+                )}
+                {anyTimed && (
+                  <span className="w-28 text-right tabular-nums text-xs" style={{ color: 'var(--muted)' }} title="Time to dice · speed score">
+                    {row.best.timeSeconds != null ? `${formatTime(row.best.timeSeconds)} · ${row.speed} fast` : 'no time'}
+                  </span>
+                )}
+                <span
+                  className="w-12 text-right tabular-nums font-semibold text-base"
+                  style={{ color: anyTimed && row.overall === null ? 'var(--muted)' : undefined }}
+                  title={anyTimed ? 'Overall' : 'Evenness'}
+                >
+                  {anyTimed ? row.overall ?? '–' : row.best.score}
+                </span>
               </div>
             );
           })}
         </div>
+        {anyTimed && (
+          <p className="text-[11px] mt-2" style={{ color: 'var(--muted)' }}>
+            Overall = {Math.round((1 - SPEED_WEIGHT) * 100)}% evenness + {Math.round(SPEED_WEIGHT * 100)}% speed, where speed is 100 × fastest time ({formatTime(fastest)}) ÷ your time.
+            Players without a recorded time keep their evenness score but rank after everyone with a time{isAdmin ? '; add times in the attempts list below' : ''}.
+          </p>
+        )}
       </div>
 
       {/* Every attempt, newest first */}
@@ -447,6 +516,7 @@ export default function OnionPage() {
               </button>
             )}
           </div>
+          {isAdmin && !image && saveError && <p className="text-sm mb-3" style={{ color: WRONG }}>{saveError}</p>}
           <Panel className="!p-0">
             <ul className="text-sm">
               {[...attempts].reverse().map((a) => (
@@ -456,7 +526,14 @@ export default function OnionPage() {
                     <span style={{ fontWeight: a.username === user ? 600 : 400 }}>{displayName(a.username)}</span>
                     <span className="ml-2 text-xs" style={{ color: 'var(--muted)' }}>{a.pieces} pieces · {pct(a.inSpec)} in spec</span>
                   </span>
-                  <span className="text-xs whitespace-nowrap shrink-0" style={{ color: 'var(--muted)' }}>{formatDate(a.scoredAt)}</span>
+                  {isAdmin ? (
+                    <TimeEditor key={`${a.id}:${a.timeSeconds ?? ''}`} seconds={a.timeSeconds} busy={saving} onSave={(raw) => setAttemptTime(a, raw)} />
+                  ) : (
+                    <span className="text-xs tabular-nums whitespace-nowrap shrink-0" style={{ color: 'var(--muted)' }}>
+                      {a.timeSeconds != null ? formatTime(a.timeSeconds) : 'no time'}
+                    </span>
+                  )}
+                  <span className="text-xs whitespace-nowrap shrink-0 hidden sm:inline" style={{ color: 'var(--muted)' }}>{formatDate(a.scoredAt)}</span>
                   {isAdmin && (
                     <button type="button" onClick={() => deleteAttempt(a)} title="Remove this attempt" className="p-1.5 shrink-0" style={{ color: WRONG }}>
                       <Trash2 className="w-4 h-4" />
@@ -469,6 +546,146 @@ export default function OnionPage() {
         </div>
       )}
     </div>
+  );
+}
+
+/** Seconds → what the time field expects ("1:05.3" or "42.7"). */
+function formatTimeInput(seconds: number): string {
+  const rounded = Math.round(seconds * 10) / 10;
+  if (rounded < 60) return String(rounded);
+  const m = Math.floor(rounded / 60);
+  const s = Math.round((rounded - m * 60) * 10) / 10;
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+/** Shows an attempt's time; admins click it to type a new one. Enter saves, Escape cancels, blank clears. */
+function TimeEditor({ seconds, busy, onSave }: { seconds: number | null; busy: boolean; onSave: (raw: string) => Promise<boolean> }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(seconds == null ? '' : formatTimeInput(seconds));
+
+  const commit = async () => {
+    if (await onSave(text)) setEditing(false);
+  };
+  const cancel = () => {
+    setText(seconds == null ? '' : formatTimeInput(seconds));
+    setEditing(false);
+  };
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        title="Set the time for this attempt"
+        className="text-xs tabular-nums whitespace-nowrap shrink-0 underline decoration-dotted underline-offset-4"
+        style={{ color: seconds == null ? 'var(--accent)' : 'var(--muted)' }}
+      >
+        {seconds == null ? 'add time' : formatTime(seconds)}
+      </button>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1 shrink-0">
+      <input
+        autoFocus
+        type="text"
+        inputMode="decimal"
+        placeholder="m:ss"
+        value={text}
+        disabled={busy}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { e.preventDefault(); commit(); }
+          if (e.key === 'Escape') cancel();
+        }}
+        className="w-20 px-2 py-1 text-xs tabular-nums focus:outline-none"
+        style={{ border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
+      />
+      <button type="button" onClick={commit} disabled={busy} title="Save time" className="p-1 disabled:opacity-40" style={{ color: CORRECT }}>
+        <Check className="w-4 h-4" />
+      </button>
+      <button type="button" onClick={cancel} disabled={busy} title="Cancel" className="p-1 disabled:opacity-40" style={{ color: 'var(--muted)' }}>
+        <X className="w-4 h-4" />
+      </button>
+    </span>
+  );
+}
+
+/** Simple stopwatch; stopping hands the elapsed time to the save form. */
+function Stopwatch({ onStop }: { onStop: (seconds: number) => void }) {
+  const [running, setRunning] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const startedAt = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!running) return;
+    const tick = () => setElapsed((performance.now() - (startedAt.current ?? performance.now())) / 1000);
+    const handle = window.setInterval(tick, 100);
+    return () => window.clearInterval(handle);
+  }, [running]);
+
+  const start = () => {
+    startedAt.current = performance.now() - elapsed * 1000;
+    setRunning(true);
+  };
+  const stop = () => {
+    const total = (performance.now() - (startedAt.current ?? performance.now())) / 1000;
+    setElapsed(total);
+    setRunning(false);
+    onStop(total);
+  };
+  const reset = () => {
+    setRunning(false);
+    setElapsed(0);
+    startedAt.current = null;
+  };
+
+  return (
+    <Panel>
+      <div className="flex flex-wrap items-center gap-4">
+        <Timer className="w-5 h-5" style={{ color: 'var(--muted)' }} />
+        <span className="text-4xl tabular-nums leading-none" style={{ ...SERIF, color: running ? 'var(--foreground)' : 'var(--muted)' }}>
+          {formatTime(elapsed)}
+        </span>
+        <div className="flex gap-2 ml-auto">
+          {running ? (
+            <button
+              type="button"
+              onClick={stop}
+              className="inline-flex items-center gap-1.5 px-5 py-2 text-sm tracking-widest uppercase"
+              style={{ background: 'var(--accent)', color: '#f5f0e8', border: '1px solid var(--accent)' }}
+            >
+              <Pause className="w-4 h-4" />
+              Stop
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={start}
+              className="inline-flex items-center gap-1.5 px-5 py-2 text-sm tracking-widest uppercase"
+              style={{ background: 'var(--accent)', color: '#f5f0e8', border: '1px solid var(--accent)' }}
+            >
+              <Play className="w-4 h-4" />
+              {elapsed > 0 ? 'Resume' : 'Start'}
+            </button>
+          )}
+          {elapsed > 0 && !running && (
+            <button
+              type="button"
+              onClick={reset}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs tracking-widest uppercase"
+              style={{ color: 'var(--foreground)', border: '1px solid var(--border)', background: 'var(--card)' }}
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
+      <p className="text-[11px] mt-2" style={{ color: 'var(--muted)' }}>
+        Start when they pick up the knife, stop when the last piece is cut. Stopping fills in the time on the save form below.
+      </p>
+    </Panel>
   );
 }
 

@@ -151,6 +151,8 @@ export type OnionAttempt = {
   cv: number;
   /** Share of pieces within tolerance of the median size, 0–1. */
   inSpec: number;
+  /** Seconds taken to dice the onion, or null for attempts saved without a time. */
+  timeSeconds: number | null;
   /** Admin who saved the attempt. */
   scoredBy: string | null;
   scoredAt: string;
@@ -192,7 +194,7 @@ type GameResultRow = { game_id: string; username: string; place: number };
 type BonusAwardRow = { id: string; username: string; points: number; reason: string | null; awarded_at: Date | string | null };
 type OnionAttemptRow = {
   id: string; username: string; score: number; pieces: number; cv: number; in_spec: number;
-  scored_by: string | null; scored_at: Date | string | null;
+  time_seconds: number | string | null; scored_by: string | null; scored_at: Date | string | null;
 };
 
 const TRIVIA_GAME_KEY = 'trivia_game';
@@ -629,13 +631,18 @@ export const db = {
       pieces: r.pieces,
       cv: Number(r.cv),
       inSpec: Number(r.in_spec),
+      timeSeconds: r.time_seconds == null ? null : Number(r.time_seconds),
       scoredBy: r.scored_by ?? null,
       scoredAt: r.scored_at instanceof Date ? r.scored_at.toISOString() : (r.scored_at ?? new Date().toISOString()),
     }));
   },
   async addOnionAttempt(a: Omit<OnionAttempt, 'scoredAt'>) {
-    await sql`INSERT INTO onion_attempts (id, username, score, pieces, cv, in_spec, scored_by)
-              VALUES (${a.id}, ${a.username}, ${a.score}, ${a.pieces}, ${a.cv}, ${a.inSpec}, ${a.scoredBy})`;
+    await sql`INSERT INTO onion_attempts (id, username, score, pieces, cv, in_spec, time_seconds, scored_by)
+              VALUES (${a.id}, ${a.username}, ${a.score}, ${a.pieces}, ${a.cv}, ${a.inSpec}, ${a.timeSeconds}, ${a.scoredBy})`;
+  },
+  async setOnionAttemptTime(id: string, timeSeconds: number | null): Promise<boolean> {
+    const rows = await sql<{ id: string }>`UPDATE onion_attempts SET time_seconds = ${timeSeconds} WHERE id = ${id} RETURNING id`;
+    return rows.length > 0;
   },
   async removeOnionAttempt(id: string) {
     await sql`DELETE FROM onion_attempts WHERE id = ${id}`;
