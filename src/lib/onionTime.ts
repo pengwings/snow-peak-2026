@@ -3,26 +3,33 @@
 /** Share of the overall score that comes from speed; the rest is evenness. */
 export const SPEED_WEIGHT = 0.5;
 
-/** "1:05.3" → 65.3, "90" → 90, "1:05" → 65; null when blank, undefined when unparsable. */
+/** "1:05.312" → 65.312, "90.5" → 90.5, "1:05" → 65; null when blank, undefined when unparsable. Kept to the millisecond. */
 export function parseTimeInput(raw: string): number | null | undefined {
   const text = raw.trim();
   if (!text) return null;
-  const m = /^(?:(\d+):)?(\d+(?:\.\d+)?)$/.exec(text);
+  const m = /^(?:(\d+):)?(\d+(?:[.,]\d+)?)$/.exec(text);
   if (!m) return undefined;
   const minutes = m[1] ? Number(m[1]) : 0;
-  const seconds = Number(m[2]);
+  const seconds = Number(m[2].replace(',', '.'));
   if (m[1] && seconds >= 60) return undefined;
-  const total = minutes * 60 + seconds;
+  const total = Math.round((minutes * 60 + seconds) * 1000) / 1000;
   return total > 0 ? total : undefined;
 }
 
-/** 65.3 → "1:05.3", 90 → "1:30", 12.4 → "12.4s". */
+/** Milliseconds always shown, so times line up: 65.312 → "1:05.312", 90 → "1:30.000", 12.4 → "12.400s". */
 export function formatTime(seconds: number): string {
-  const rounded = Math.round(seconds * 10) / 10;
-  if (rounded < 60) return `${rounded}s`;
-  const m = Math.floor(rounded / 60);
-  const s = rounded - m * 60;
-  const whole = Math.floor(s);
-  const tenths = Math.round((s - whole) * 10);
-  return `${m}:${String(whole).padStart(2, '0')}${tenths ? `.${tenths}` : ''}`;
+  const ms = Math.round(seconds * 1000);
+  const m = Math.floor(ms / 60000);
+  const s = ((ms % 60000) / 1000).toFixed(3);
+  if (m === 0) return `${s}s`;
+  return `${m}:${s.padStart(6, '0')}`;
+}
+
+/** Seconds → what the time field expects ("1:05.312" or "42.7"), with no trailing zeros. */
+export function formatTimeInput(seconds: number): string {
+  const ms = Math.round(seconds * 1000);
+  const m = Math.floor(ms / 60000);
+  const s = ((ms % 60000) / 1000).toFixed(3).replace(/\.?0+$/, '');
+  if (m === 0) return s;
+  return `${m}:${Number(s) < 10 ? '0' : ''}${s}`;
 }

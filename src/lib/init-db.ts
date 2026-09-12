@@ -234,7 +234,9 @@ async function init() {
     );
   `;
   // Time to dice was added later; attempts saved before it stay valid with no time.
-  await sql`ALTER TABLE onion_attempts ADD COLUMN IF NOT EXISTS time_seconds REAL;`;
+  // Stored to the millisecond, so double precision rather than REAL.
+  await sql`ALTER TABLE onion_attempts ADD COLUMN IF NOT EXISTS time_seconds DOUBLE PRECISION;`;
+  await sql`ALTER TABLE onion_attempts ALTER COLUMN time_seconds TYPE DOUBLE PRECISION;`;
 
   // Seed the campground-provided items if none exist yet
   const providedCount = await sql<{ count: string }>`SELECT count(*) FROM packing_items WHERE provided = true`;

@@ -6,7 +6,7 @@ import { Camera, Check, Pause, Play, RotateCcw, Timer, Trash2, X } from 'lucide-
 import { displayName } from '@/lib/displayName';
 import { useSession } from '@/lib/useSession';
 import type { OnionData } from '@/lib/onion';
-import { SPEED_WEIGHT, formatTime, parseTimeInput } from '@/lib/onionTime';
+import { SPEED_WEIGHT, formatTime, formatTimeInput, parseTimeInput } from '@/lib/onionTime';
 import type { OnionAttempt } from '@/lib/db';
 import {
   Analysis, AnalysisOptions, DEFAULT_OPTIONS, IN_SPEC_TOLERANCE, MIN_PIECES, analyzeImage, drawOverlay, scoreLabel,
@@ -162,7 +162,7 @@ export default function OnionPage() {
     if (!analysis || analysis.score === null) return;
     if (!player) { setSaveError('Pick whose onion this is.'); return; }
     const timeSeconds = parseTimeInput(timeText);
-    if (timeSeconds === undefined) { setSaveError('Enter the time as seconds (e.g. 95) or minutes:seconds (e.g. 1:35), or leave it blank.'); return; }
+    if (timeSeconds === undefined) { setSaveError('Enter the time as seconds (e.g. 95.312) or minutes:seconds (e.g. 1:35.312), or leave it blank.'); return; }
     const ok = await post({
       action: 'save',
       username: player,
@@ -181,7 +181,7 @@ export default function OnionPage() {
   /** Adds, changes, or clears the time on an attempt that has already been saved. */
   const setAttemptTime = async (a: OnionAttempt, raw: string) => {
     const timeSeconds = parseTimeInput(raw);
-    if (timeSeconds === undefined) { setSaveError('Enter the time as seconds (e.g. 95) or minutes:seconds (e.g. 1:35).'); return false; }
+    if (timeSeconds === undefined) { setSaveError('Enter the time as seconds (e.g. 95.312) or minutes:seconds (e.g. 1:35.312).'); return false; }
     const ok = await post({ action: 'setTime', id: a.id, timeSeconds });
     if (ok) setNotice(timeSeconds ? `${displayName(a.username)}’s ${a.score}: ${formatTime(timeSeconds)}.` : `Cleared the time on ${displayName(a.username)}’s ${a.score}.`);
     return ok;
@@ -396,7 +396,7 @@ export default function OnionPage() {
                         <input
                           type="text"
                           inputMode="decimal"
-                          placeholder="m:ss"
+                          placeholder="m:ss.mmm"
                           value={timeText}
                           onChange={(e) => setTimeText(e.target.value)}
                           className="w-full px-3 py-2 text-sm tabular-nums focus:outline-none"
@@ -416,7 +416,7 @@ export default function OnionPage() {
                       </button>
                     </div>
                     <p className="text-[11px] mt-1.5" style={{ color: 'var(--muted)' }}>
-                      Time from the stopwatch above, or type seconds or minutes:seconds. Leave blank to save evenness only.
+                      Time from the stopwatch above, or type seconds or minutes:seconds, down to the millisecond. Leave blank to save evenness only.
                     </p>
                     {saveError && <p className="text-sm mt-2" style={{ color: WRONG }}>{saveError}</p>}
                   </div>
@@ -549,15 +549,6 @@ export default function OnionPage() {
   );
 }
 
-/** Seconds → what the time field expects ("1:05.3" or "42.7"). */
-function formatTimeInput(seconds: number): string {
-  const rounded = Math.round(seconds * 10) / 10;
-  if (rounded < 60) return String(rounded);
-  const m = Math.floor(rounded / 60);
-  const s = Math.round((rounded - m * 60) * 10) / 10;
-  return `${m}:${s < 10 ? '0' : ''}${s}`;
-}
-
 /** Shows an attempt's time; admins click it to type a new one. Enter saves, Escape cancels, blank clears. */
 function TimeEditor({ seconds, busy, onSave }: { seconds: number | null; busy: boolean; onSave: (raw: string) => Promise<boolean> }) {
   const [editing, setEditing] = useState(false);
@@ -590,7 +581,7 @@ function TimeEditor({ seconds, busy, onSave }: { seconds: number | null; busy: b
         autoFocus
         type="text"
         inputMode="decimal"
-        placeholder="m:ss"
+        placeholder="m:ss.mmm"
         value={text}
         disabled={busy}
         onChange={(e) => setText(e.target.value)}
@@ -598,7 +589,7 @@ function TimeEditor({ seconds, busy, onSave }: { seconds: number | null; busy: b
           if (e.key === 'Enter') { e.preventDefault(); commit(); }
           if (e.key === 'Escape') cancel();
         }}
-        className="w-20 px-2 py-1 text-xs tabular-nums focus:outline-none"
+        className="w-24 px-2 py-1 text-xs tabular-nums focus:outline-none"
         style={{ border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)' }}
       />
       <button type="button" onClick={commit} disabled={busy} title="Save time" className="p-1 disabled:opacity-40" style={{ color: CORRECT }}>
@@ -620,7 +611,7 @@ function Stopwatch({ onStop }: { onStop: (seconds: number) => void }) {
   useEffect(() => {
     if (!running) return;
     const tick = () => setElapsed((performance.now() - (startedAt.current ?? performance.now())) / 1000);
-    const handle = window.setInterval(tick, 100);
+    const handle = window.setInterval(tick, 37);
     return () => window.clearInterval(handle);
   }, [running]);
 

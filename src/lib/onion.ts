@@ -120,12 +120,12 @@ export function validateAttempt(
   return { username, score, pieces, cv, inSpec, timeSeconds: time };
 }
 
-/** A time in seconds (rounded to tenths), null when absent, or an error. Used both on save and when adding a time later. */
+/** A time in seconds (rounded to the millisecond), null when absent, or an error. Used both on save and when adding a time later. */
 export function validateTime(raw: unknown): number | null | { error: string } {
   if (raw == null || raw === '') return null;
   const seconds = Number(raw);
   if (!Number.isFinite(seconds) || seconds <= 0 || seconds > 24 * 3600) return { error: 'Time must be a positive number of seconds' };
-  return Math.round(seconds * 10) / 10;
+  return Math.round(seconds * 1000) / 1000;
 }
 
 /**

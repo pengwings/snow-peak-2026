@@ -151,7 +151,7 @@ export type OnionAttempt = {
   cv: number;
   /** Share of pieces within tolerance of the median size, 0–1. */
   inSpec: number;
-  /** Seconds taken to dice the onion, or null for attempts saved without a time. */
+  /** Seconds taken to dice the onion, to the millisecond (e.g. 85.312), or null for attempts saved without a time. */
   timeSeconds: number | null;
   /** Admin who saved the attempt. */
   scoredBy: string | null;
